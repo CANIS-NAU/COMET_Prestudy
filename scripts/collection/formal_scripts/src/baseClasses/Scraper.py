@@ -4,10 +4,12 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from abc import abstractclassmethod, ABC
 
 # Class definition
-class Scraper():
+class Scraper(ABC):
 
+  ######## Public Methods ########
   def __init__(self, site_url: str, keywords: list, driver: str):
     """Initialize the Scraper Object
 
@@ -20,6 +22,30 @@ class Scraper():
     self.site_url = site_url
     self.keywords = keywords
     self.driver = self._get_driver()
+
+  @abstractclassmethod
+  def search(self, search_term: str):
+    """Enter keyword search into the desired page. Returns the selenium driver object with the loaded-page results
+
+    Args:
+        search_term (str): search term that will be queried by the website
+
+    Returns:
+        WebDriver: selenium WebDriver object with the post-query search results page
+    """
+    pass
+
+  @abstractclassmethod
+  def next_page(self):
+    pass
+
+  @abstractclassmethod
+  def scrape(self):
+    pass
+
+  @abstractclassmethod
+  def parse_replies(self):
+    pass
 
 
   ######## Private Class Functions ########
@@ -36,11 +62,14 @@ class Scraper():
     if "chrome" in driver_name.lower():
       return webdriver.Chrome()
 
-    if "firefox" in driver_name.lower():
+    elif "firefox" in driver_name.lower():
       return webdriver.Firefox()
 
-    if "safari" in driver_name.lower():
+    elif "safari" in driver_name.lower():
       return webdriver.Safari()
 
-    if "opera" in driver_name.lower():
+    elif "opera" in driver_name.lower():
       return webdriver.Opera()
+
+    else:
+      raise Exception("Invalid driver name")
