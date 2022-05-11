@@ -1,5 +1,10 @@
 # Project Setup
 
+## Keywords
+- Poetry: Project management/dependancy management software
+- Project Directory: The directory where the python files are (ie. **formal collection scripts** : ```/scripts/collection/formal_scripts/```)
+
+## Setup
 This package makes use of the Poetry project manager. First, make sure that you have poetry installed. One can install it using the PyPi package:
 ```bash
 pip install poetry
