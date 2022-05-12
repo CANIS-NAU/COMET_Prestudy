@@ -16,6 +16,8 @@ class GoogleGroupsScraper(Scraper):
     def __init__(self, site_url: str, keywords: list, driver: str):
         super().__init__()
 
+    
+
 
 
 # navigate to the google groups website in question

@@ -1,28 +1,14 @@
-#!/usr/bin/env python3
+from dataclasses import dataclass
 
-from abc import ABC, abstractclassmethod
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-
-class Post(ABC):
+@dataclass
+class Post:
+  """Post will act as a data class for abstracting data storage for post data. 
+  This includes Post titles, text content, responses, digital media, and others.
+  Can be expanded upon by creating new subclasses that add more specific data storage items if needed.
+  """
 
   title: str
   content: str
   responses: str 
+  media: bytes
   # Can add other data points in subclasses based on needs of the website
-
-  ######## Public Class Methods ########
-  @abstractclassmethod
-  def get_title():
-    pass
-
-  @abstractclassmethod
-  def get_content():
-    pass
-
-  @abstractclassmethod
-  def get_replies():
-    pass
-
-  ######## Private Class Methods ########

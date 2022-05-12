@@ -1,10 +1,14 @@
+#!/usr/bin/env python3
+
+# These tests are pretty much identical to the 
+# ggroup_selenium_test.py tests, except that this will test
+# the same functionalities using the GoogleScraper class implementation
+
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from os import path
 import tempfile
 from random import randint
-import selenium
 
 # global variables for reuse
 canis_test_url = 'https://www.canis-lab.com/'
@@ -15,6 +19,7 @@ def test_selenium_driver():
   """
   Ensure that selenium driver is properly working in this environment
   """
+  
   driver = webdriver.Chrome()
   driver.get(canis_test_url)
 
@@ -42,33 +47,35 @@ def test_mlab_group():
   title and post data, then store to temporary file
   """
 
-  # setup selenium driver
   driver = webdriver.Chrome()
   driver.get(mlab_group_url)
 
   # save post titles for comparison later
   post_titles = []
   urls = set([a_tag.get_attribute('href') for a_tag in driver.find_elements(by=By.TAG_NAME, value='a') if '/c/' in a_tag.get_attribute('href')])
-  tmp_file = path.join(tempfile.gettempdir(), "testfile")
+  filename = path.join(tempfile.gettempdir(), f'ggtester_{randint(0,999)}.txt')
+  tmp_file = open(filename, 'x')
+
 
   # parse through all anchor tags until a valid "post" url pattern is identified
   # (containing '/c/')
   for post in urls:
     driver.get(post)
-    post_titles.append(driver.title)
 
-    with open(tmp_file, 'a') as post_title_file:
-      post_title_file.write(driver.title + '\n')
+    post_titles.append(driver.title)
+    tmp_file.write(f'{driver.title}\n')
+
+  tmp_file.close()
 
   # now, check through all posts collected in the temp file, and compare with the names collected
   # in the post_titles array
-
   random_number = randint(0, len(post_titles))
 
-  with open(tmp_file, 'r') as test_file:
-    file_lines = test_file.readlines()
+  tmp_file = open(filename, 'r')
+  file_lines = tmp_file.read().splitlines()
+  tmp_file.close()
 
-    assert post_titles[random_number] in file_lines
+  assert post_titles[random_number] in file_lines[random_number]
 
 
 # TODO
