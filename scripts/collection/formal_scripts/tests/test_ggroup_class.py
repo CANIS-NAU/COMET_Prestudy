@@ -30,6 +30,16 @@ def test_ggroup_post_identify():
             assert 'A followup' in post.title
         
 
+def test_expand_all():
+    """TODO At this moment, there is no real way to test this other than with human intervention.
+    Human needs to see if the tabs open when the command is executed"""
+
+    expand_class = GoogleGroupsScraper(mlab_group_url, '', 'chrome')
+
+    expand_class.scrape()
+
+    assert True
+
 
 def test_mlab_group():
     """
@@ -46,7 +56,7 @@ def test_mlab_group():
     mlab_scraper.flushPosts('./post_titles.txt')
 
     # load lines from the created file into an array for comparison
-    with open("FILENAMEHERE", 'r') as out_file:
+    with open("./post_titles.txt", 'r') as out_file:
         file_lines = out_file.read().splitlines()
 
 

@@ -113,13 +113,13 @@ class Scraper(ABC):
         """
 
         with open(filename, "a") as out_file:
-            for index, post in self.posts:
+            for post in self.posts:
 
                 # write the post data to the file
                 out_file.write(post.to_str())
 
                 # pop the current item out of the list
-                self.posts.pop(index)
+                self.posts.remove(post)
 
     ######## Private Class Functions ########
     def _get_driver(self, driver_name: str):

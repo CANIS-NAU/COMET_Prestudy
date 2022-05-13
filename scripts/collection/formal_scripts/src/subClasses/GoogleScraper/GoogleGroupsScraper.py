@@ -50,11 +50,25 @@ class GoogleGroupsScraper(Scraper):
         )
     def _collect_page_metadata(self):
 
+        self._expand_all_posts()
+
         title = self.driver.title
         content = self._get_content()
         replies = self._get_responses()
         media = None
         return {"title": title, "content": content, "replies": replies, "media": media}
+
+    # TODO - Optimize
+    def _expand_all_posts(self):
+        """From within the google groups page, make sure that all posts are expanded 
+        by clicking the 'expand all' button on the page.
+        """
+
+        # identify the expand all button on the page
+        expand_button_candidates = [ div for div in self.driver.find_elements(by=By.TAG_NAME, value='div') if div.get_attribute('aria-label') == 'Expand All']
+        if any(expand_button_candidates) and len(expand_button_candidates) == 1:
+            expand_button_candidates[0].click()
+
 
     def _new_post(self):
         metadata = self._collect_page_metadata()
@@ -67,12 +81,21 @@ class GoogleGroupsScraper(Scraper):
 
         self.posts.append(newPost)
 
-    def _get_content(self):
-        pass
+    def _get_content(self) -> str:
+        # find the part of the post webpage that contains <html-blob> tag
+        value = self.driver.find_element(By.TAG_NAME, 'html-blob').text
+        return value
 
+    # TODO filter out any html-blobs that match the post's content (all responses are the same kind of div as the original post)
     def _get_responses(self):
-        pass
+        all_blobs = self.driver.find_elements(By.TAG_NAME, 'html-blob')
+        all_posts = self.posts
 
+        for item in all_posts:
+            if item.title == all_blobs
+        # grab all html-blob objects that are NOT the same as the first html-blob ( aka. original post)
+        value = [response.text for response in  if not any([post.title for post in self.posts if post.title == response.text]) ]
+        return value
 
 
 ########## Main function that actually uses this script for scraping ##########

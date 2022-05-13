@@ -10,4 +10,4 @@ class GooglePost(Post):
     """TODO converts post items into \n separated values, 
     Will be changed when actual output format is decided
     """
-    return f'Title: {self.title}\nContent: {self.post_content}\nReplies: {self.replies}\nMedia: #{len(self.media)} Media items were found\n\n'
+    return f'Title: {self.title}\n' + 'Content: ' + self.post_content.replace("\n", " ") + f'\nReplies: {self.replies}\nMedia: {len(self.media) if self.media else 0} Media items were found\n\n'
