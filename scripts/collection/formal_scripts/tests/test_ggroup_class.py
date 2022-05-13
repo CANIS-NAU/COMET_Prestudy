@@ -17,39 +17,18 @@ group_test_url = "https://groups.google.com/g/canis-google-group-test-group"
 mlab_group_url = "https://groups.google.com/a/measurementlab.net/g/discuss"
 
 
-def test_class_driver():
-    """
-    Ensure that selenium driver is properly working in this environment
-    """
-
-    # create google scraper object
-    scraper = GoogleGroupsScraper(canis_test_url, "", "Chrome")
-
-    # grab current page as a post
-    scraper.goto(scraper.base_url)
-    scraper.to_post()
-
-    # get the title as variable
-    test_title = scraper.posts[-1].title
-
-    assert "ABOUT" in test_title
-
-
 def test_ggroup_post_identify():
     """
     Test Selenium's ability to identify and extract text from google groups
     """
 
-    driver = webdriver.Chrome()
-    driver.get(group_test_url)
+    quinton_scraper = GoogleGroupsScraper(group_test_url, '', 'chrome')
+    quinton_scraper.scrape()
 
-    for anchor_tag in driver.find_elements(by=By.TAG_NAME, value="a"):
-        link = anchor_tag.get_attribute("href")
-
-        if "/c/" in link:
-
-            if "A followup" in driver.title:
-                assert "A followup" in driver.title
+    for post in quinton_scraper.posts:
+        if 'A followup' in post.title:
+            assert 'A followup' in post.title
+        
 
 
 def test_mlab_group():
@@ -58,40 +37,25 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    driver = webdriver.Chrome()
-    driver.get(mlab_group_url)
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, '', 'chrome')
 
-    # save post titles for comparison later
-    post_titles = []
-    urls = set(
-        [
-            a_tag.get_attribute("href")
-            for a_tag in driver.find_elements(by=By.TAG_NAME, value="a")
-            if "/c/" in a_tag.get_attribute("href")
-        ]
-    )
-    filename = path.join(tempfile.gettempdir(), f"ggtester_{randint(0,999)}.txt")
-    tmp_file = open(filename, "x")
+    # collect all post data points and save them to a file called (post_titles.txt)
+    mlab_scraper.scrape()
 
-    # parse through all anchor tags until a valid "post" url pattern is identified
-    # (containing '/c/')
-    for post in urls:
-        driver.get(post)
+    collected_titles = [post.title for post in mlab_scraper.posts]
+    mlab_scraper.flushPosts('./post_titles.txt')
 
-        post_titles.append(driver.title)
-        tmp_file.write(f"{driver.title}\n")
+    # load lines from the created file into an array for comparison
+    with open("FILENAMEHERE", 'r') as out_file:
+        file_lines = out_file.read().splitlines()
 
-    tmp_file.close()
 
-    # now, check through all posts collected in the temp file, and compare with the names collected
-    # in the post_titles array
-    random_number = randint(0, len(post_titles))
-
-    tmp_file = open(filename, "r")
-    file_lines = tmp_file.read().splitlines()
-    tmp_file.close()
-
-    assert post_titles[random_number] in file_lines[random_number]
+    # now, check through all posts collected in the file, and compare with the 
+    # names collected in the 'collected_titles' variable
+    
+    for title in collected_titles:
+        if title in file_lines:
+            assert title in file_lines
 
 
 # TODO

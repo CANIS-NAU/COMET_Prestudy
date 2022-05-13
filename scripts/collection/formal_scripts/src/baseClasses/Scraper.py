@@ -25,54 +25,45 @@ class Scraper(ABC):
         self.driver = self._get_driver(driver)
         self.posts: list[Post] = []
 
+        self.driver.get(self.base_url)
+
     ######## Needs Implementation ########
 
     @abstractmethod
     def search(self, search_term: str):
-        """Enter keyword search into the desired page. Returns the selenium driver object with the loaded-page results
+        """Enter keyword search into the desired page. Self.driver will be the 
+        selenium WebDriver object with the loaded query results page
 
         Args:
-            search_term (str): search term that will be queried by the website
+            search_term (str): search term/keyword that will sent to the website 
+            for query
 
         Returns:
-            WebDriver: selenium WebDriver object with the post-query search results page
+            WebDriver: selenium WebDriver object with the post-query search 
+            results page
         """
         pass
 
     @abstractmethod
     def next_page(self):
-        """Technique for moving to the next page of a pagenated website, or loading all data points
-        from a dynamically growing page structure.
+        """Technique for moving to the next page of a pagenated website, 
+        or loading all data points from a dynamically growing page structure.
         """
         pass
 
-    @abstractmethod
-    def get_post_metadata(self):
-        """meta-function, grabs current post metadata. (ie. Post title, post text contents, responses, attached media, etc.)
+    def get_post(self, index: int) -> Post:
+        """Grabs all post metadata from self.posts array at the provided index. 
+       
+        (ie. Post title, post text contents, responses, attached media, etc.)
+
+        Args:
+            index (int): index location of the specified post within the 'Posts' array
 
         Returns:
             Post: Post data object with post elements stored as class members
         """
 
-    @abstractmethod
-    def get_post_title(self):
-        """Get the title of a post/place of interest"""
-        pass
-
-    @abstractmethod
-    def get_post_responses(self):
-        """Get all responses from the specified post url
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            _type_: _description_
-        """
-
-    @abstractmethod
-    def get_post_text_content(self):
-        """get the direct text content from within the post (ie. post author's text)"""
+        return self.posts[index]
 
     @abstractmethod
     def scrape(self):
@@ -82,14 +73,23 @@ class Scraper(ABC):
         pass
 
     @abstractmethod
-    def to_post(self):
+    def _new_post(self):
         """Convert the currently loaded page to a post object, then save within
         the scraper's collection
         """
         pass
 
+    @abstractmethod
+    def _find_posts():
+        """Based on how the website is structured, define what a "post" is and
+        gather all url's to every post that can be identified
+        
+        NOTE: Will likely need the help of the 'next_page' function to access 
+        more data if it is hidden behind pagination/loading-screens/etc."""
+
     ########## END - Needs Implementation ##########
 
+    ########## Class methods that will be shared by all children ##########
     def goto(self, url):
         """Navigate to the page specified by the `url` parameter
 
@@ -102,7 +102,24 @@ class Scraper(ABC):
     def to_baseurl(self):
         """Take the browser back to the website root"""
 
-        self.driver = self.driver.get(self.base_url)
+        self.driver.get(self.base_url)
+
+    def flushPosts(self, filename):
+        """Flush all the posts saved in the self.post buffer, and output to a file at the
+        specified output directory
+
+        Args:
+            filename (str): full directory + filename where the file will be saved
+        """
+
+        with open(filename, "a") as out_file:
+            for index, post in self.posts:
+
+                # write the post data to the file
+                out_file.write(post.to_str())
+
+                # pop the current item out of the list
+                self.posts.pop(index)
 
     ######## Private Class Functions ########
     def _get_driver(self, driver_name: str):
@@ -128,4 +145,32 @@ class Scraper(ABC):
             return webdriver.Opera()
 
         else:
-            raise Exception("Invalid driver name")
+            print("Invalid Driver Name")
+            exit(1)
+
+    def _out_file_format():
+        """--TODO-- Handles the output of multiple post.to_str() calls, and organizes
+        into a single output ready to be written into a file.
+        """
+
+    @abstractmethod
+    def _collect_page_metadata() -> dict:
+        """Gathers the needed page items from the current site loaded by
+        WebDriver. Gathers data points that will be used to populate Post
+        items with corresponding page data
+
+        You can use/create any amount of helper functions to accomplish this goal,
+        as long as, in the end, it returns a dictionary of the required data that can be
+        used to create a Post object with the contained data.
+
+        Return example: 
+        {post_field_name: value, ...} 
+
+        or... 
+        
+        {title: "My internet is really bad, help", content: "Does anyone know what to do about slow internet", replies: ["No, not really?", "same here"]}
+
+
+        (ie. If the website's title is the same value as the post's title, you would
+        use 'driver.title to populate the respective Post.title)
+        """
