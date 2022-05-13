@@ -3,24 +3,29 @@
 # imports
 from selenium import webdriver
 from abc import abstractmethod, ABC
+from .Post import Post
 
 # Class definition
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, site_url: str, keywords: list, driver: str):
+    def __init__(self, base_url: str, search_keywords: list, driver: str):
         """Initialize the Scraper Object
 
+        NOTE: Web drivers need to be installed prior to use
+
         Args:
-            site_url (str): The url of the website you wish to scrape
-            keywords (list): Specific keywords/search terms that you wish to enter into a search functionality
-            driver (str): The driver/browser you wish to use for accessing the internet ("Chrome"/"Firefox")
+            base_url (str): The url of the root website you wish to scrape
+            search_keywords (list): Specific keywords/search terms that you wish to enter into a search functionality
+            driver (str): The driver/browser you wish to use for accessing the internet ("Chrome"/"Firefox/Safari/Opera")
         """
 
-        self.site_url = site_url
-        self.keywords = keywords
+        self.base_url: str = base_url
+        self.search_keywords: list[str] = search_keywords
         self.driver = self._get_driver(driver)
-        self.posts = []
+        self.posts: list[Post] = []
+
+    ######## Needs Implementation ########
 
     @abstractmethod
     def search(self, search_term: str):
@@ -42,7 +47,7 @@ class Scraper(ABC):
         pass
 
     @abstractmethod
-    def get_post_metadata():
+    def get_post_metadata(self):
         """meta-function, grabs current post metadata. (ie. Post title, post text contents, responses, attached media, etc.)
 
         Returns:
@@ -50,15 +55,24 @@ class Scraper(ABC):
         """
 
     @abstractmethod
-    def get_post_title():
-      """Get the title of a post
-      """
-      pass
+    def get_post_title(self):
+        """Get the title of a post/place of interest"""
+        pass
 
     @abstractmethod
-    def get_post_text_content():
-      """get the direct text content from within the post (ie. post author's text)
-      """
+    def get_post_responses(self):
+        """Get all responses from the specified post url
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
+
+    @abstractmethod
+    def get_post_text_content(self):
+        """get the direct text content from within the post (ie. post author's text)"""
 
     @abstractmethod
     def scrape(self):
@@ -67,6 +81,15 @@ class Scraper(ABC):
         """
         pass
 
+    @abstractmethod
+    def to_post(self):
+        """Convert the currently loaded page to a post object, then save within
+        the scraper's collection
+        """
+        pass
+
+    ########## END - Needs Implementation ##########
+
     def goto(self, url):
         """Navigate to the page specified by the `url` parameter
 
@@ -74,10 +97,15 @@ class Scraper(ABC):
             url (str): the url of the website you wish to navigate to with selenium
         """
 
-        self.driver = self.driver.get(url)
+        self.driver.get(url)
+
+    def to_baseurl(self):
+        """Take the browser back to the website root"""
+
+        self.driver = self.driver.get(self.base_url)
 
     ######## Private Class Functions ########
-    def _get_driver(driver_name: str):
+    def _get_driver(self, driver_name: str):
         """Based on input, return a driver object that
         corresponds to the required web browser
 
