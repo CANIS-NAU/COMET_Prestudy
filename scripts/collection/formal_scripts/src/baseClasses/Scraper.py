@@ -44,16 +44,9 @@ class Scraper(ABC):
         """
         pass
 
-    @abstractmethod
-    def next_page(self):
-        """Technique for moving to the next page of a pagenated website, 
-        or loading all data points from a dynamically growing page structure.
-        """
-        pass
-
     def get_post(self, index: int) -> Post:
         """Grabs all post metadata from self.posts array at the provided index. 
-       
+
         (ie. Post title, post text contents, responses, attached media, etc.)
 
         Args:
@@ -66,16 +59,16 @@ class Scraper(ABC):
         return self.posts[index]
 
     @abstractmethod
-    def scrape(self):
-        """meta-function for conducting all scrape operations.
-        Acts as an entrypoint for all functionality
+    def next_page(self):
+        """Technique for moving to the next page of a pagenated website, 
+        or loading all data points from a dynamically growing page structure.
         """
         pass
 
     @abstractmethod
-    def _new_post(self):
-        """Convert the currently loaded page to a post object, then save within
-        the scraper's collection
+    def scrape(self):
+        """meta-function for conducting all scrape operations.
+        Acts as an entrypoint for all functionality
         """
         pass
 
@@ -86,6 +79,13 @@ class Scraper(ABC):
         
         NOTE: Will likely need the help of the 'next_page' function to access 
         more data if it is hidden behind pagination/loading-screens/etc."""
+
+    @abstractmethod
+    def _new_post(self):
+        """Convert the currently loaded page to a post object, then save within
+        the scraper's collection
+        """
+        pass
 
     ########## END - Needs Implementation ##########
 
@@ -122,6 +122,7 @@ class Scraper(ABC):
                 self.posts.remove(post)
 
     ######## Private Class Functions ########
+    # TODO Make class constant (ie. Scraper.CHROME) that maps to the proper option, rather than have the user enter a string themselves
     def _get_driver(self, driver_name: str):
         """Based on input, return a driver object that
         corresponds to the required web browser

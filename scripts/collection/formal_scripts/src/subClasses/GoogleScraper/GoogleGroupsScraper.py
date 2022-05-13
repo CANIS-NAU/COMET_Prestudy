@@ -81,6 +81,7 @@ class GoogleGroupsScraper(Scraper):
 
         self.posts.append(newPost)
 
+    # TODO Need to be more specific than 'html-blob'. See notes in Microsoft Teams 'Google Groups - Notes'
     def _get_content(self) -> str:
         # find the part of the post webpage that contains <html-blob> tag
         value = self.driver.find_element(By.TAG_NAME, 'html-blob').text
@@ -88,14 +89,15 @@ class GoogleGroupsScraper(Scraper):
 
     # TODO filter out any html-blobs that match the post's content (all responses are the same kind of div as the original post)
     def _get_responses(self):
-        all_blobs = self.driver.find_elements(By.TAG_NAME, 'html-blob')
-        all_posts = self.posts
+        # all_blobs = self.driver.find_elements(By.TAG_NAME, 'html-blob')
+        # all_posts = self.posts
 
-        for item in all_posts:
-            if item.title == all_blobs
-        # grab all html-blob objects that are NOT the same as the first html-blob ( aka. original post)
-        value = [response.text for response in  if not any([post.title for post in self.posts if post.title == response.text]) ]
-        return value
+        # for item in all_posts:
+        #     if item.title == all_blobs
+        # # grab all html-blob objects that are NOT the same as the first html-blob ( aka. original post)
+        # value = [response.text for response in  if not any([post.title for post in self.posts if post.title == response.text]) ]
+        # return value
+        pass
 
 
 ########## Main function that actually uses this script for scraping ##########
