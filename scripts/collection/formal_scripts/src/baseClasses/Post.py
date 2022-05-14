@@ -9,8 +9,9 @@ class Post(ABC):
   """
 
   title: str
+  author: str
   post_content: str
-  replies: str 
+  replies: dict[str,str]
   # Can add other data points in subclasses based on needs of the website
 
   @abstractmethod

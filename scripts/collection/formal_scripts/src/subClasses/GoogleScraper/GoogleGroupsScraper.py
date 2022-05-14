@@ -53,51 +53,53 @@ class GoogleGroupsScraper(Scraper):
         self._expand_all_posts()
 
         title = self.driver.title
+        author = self._get_post_author()
         content = self._get_content()
         replies = self._get_responses()
         media = None
-        return {"title": title, "content": content, "replies": replies, "media": media}
+        return {"title": title, "author": author, "content": content, "replies": replies, "media": media}
 
-    # TODO - Optimize
     def _expand_all_posts(self):
         """From within the google groups page, make sure that all posts are expanded 
         by clicking the 'expand all' button on the page.
         """
 
         # identify the expand all button on the page
-        expand_button_candidates = [ div for div in self.driver.find_elements(by=By.TAG_NAME, value='div') if div.get_attribute('aria-label') == 'Expand All']
-        if any(expand_button_candidates) and len(expand_button_candidates) == 1:
-            expand_button_candidates[0].click()
+        expand_button = self.driver.find_elements(By.XPATH, "//div[@role='button' and @aria-label='Expand all']")
+        if any(expand_button):
+            expand_button.pop().click()
 
 
     def _new_post(self):
         metadata = self._collect_page_metadata()
         newPost = GooglePost(
             title=metadata["title"],
+            author=metadata["author"],
             post_content=metadata["content"],
             replies=metadata["replies"],
-            media=metadata["media"],
-        )
+            media=metadata["media"])
 
         self.posts.append(newPost)
 
-    # TODO Need to be more specific than 'html-blob'. See notes in Microsoft Teams 'Google Groups - Notes'
     def _get_content(self) -> str:
         # find the part of the post webpage that contains <html-blob> tag
-        value = self.driver.find_element(By.TAG_NAME, 'html-blob').text
+        value = self.driver.find_element(By.XPATH, "(//div[@role='region' ])[1]").text
         return value
 
-    # TODO filter out any html-blobs that match the post's content (all responses are the same kind of div as the original post)
-    def _get_responses(self):
-        # all_blobs = self.driver.find_elements(By.TAG_NAME, 'html-blob')
-        # all_posts = self.posts
+    def _get_post_author(self) -> str:
+        value = self.driver.find_element(By.XPATH, "(//h3)[1]").text
+        return value
 
-        # for item in all_posts:
-        #     if item.title == all_blobs
-        # # grab all html-blob objects that are NOT the same as the first html-blob ( aka. original post)
-        # value = [response.text for response in  if not any([post.title for post in self.posts if post.title == response.text]) ]
-        # return value
-        pass
+    #NOTE: Side-effect, if a single person replies multiple times in the same post, all reply strings 
+    # are attached to the same single author in the dictionary
+    def _get_responses(self) -> dict[str:str]:
+        # find lists of authors and their replies
+        author_str = self.driver.find_elements(By.XPATH, "(//h3)[position()>1]")
+        response_str = self.driver.find_elements(By.XPATH, "(//div[@role='region' ])[position()>1]")
+
+        # stitch together both lists into dictionary with structure {author:response}
+        value = {author_str[iter].text:response_str[iter].text for iter in range(len(response_str))}
+        return value
 
 
 ########## Main function that actually uses this script for scraping ##########
