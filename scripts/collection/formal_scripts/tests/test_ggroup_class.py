@@ -4,12 +4,8 @@
 # ggroup_selenium_test.py tests, except that this will test
 # the same functionalities using the GoogleScraper class implementation
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from os import path
-import tempfile
-from random import randint
-from src.subClasses.GoogleScraper.GoogleGroupsScraper import GoogleGroupsScraper
+from src.Base.Scraper import DriverType
+from src.GoogleScraper.GoogleGroupsScraper import GoogleGroupsScraper
 
 # global variables for reuse
 canis_test_url = "https://www.canis-lab.com/"
@@ -22,7 +18,7 @@ def test_ggroup_post_identify():
     Test Selenium's ability to identify and extract text from google groups
     """
 
-    quinton_scraper = GoogleGroupsScraper(group_test_url, '', 'chrome')
+    quinton_scraper = GoogleGroupsScraper(group_test_url, '', DriverType.CHROME)
     quinton_scraper.scrape()
 
     for post in quinton_scraper.posts:
@@ -34,7 +30,7 @@ def test_expand_all():
     """TODO At this moment, there is no real way to test this other than with human intervention.
     Human needs to see if the tabs open when the command is executed"""
 
-    expand_class = GoogleGroupsScraper(mlab_group_url, '', 'chrome')
+    expand_class = GoogleGroupsScraper(mlab_group_url, '', DriverType.CHROME)
 
     expand_class.scrape()
 
@@ -47,12 +43,14 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    mlab_scraper = GoogleGroupsScraper(mlab_group_url, '', 'chrome')
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, '', DriverType.CHROME)
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
 
+    # Array of post titles to compare against the 'flushed' values
     collected_titles = [post.title for post in mlab_scraper.posts]
+
     mlab_scraper.flushPosts('./post_titles.txt')
 
     # load lines from the created file into an array for comparison

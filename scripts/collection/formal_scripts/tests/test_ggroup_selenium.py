@@ -70,11 +70,3 @@ def test_mlab_group():
   tmp_file.close()
 
   assert post_titles[random_number] in file_lines[random_number]
-
-
-# TODO
-def test_topic_search():
-  """
-  Test selenium's ability to access the searchbar and query for keywords
-  """
-  pass
