@@ -42,38 +42,38 @@ class Post(ABC):
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, base_url: str, search_keywords: list, driver: DriverType):
+    def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
         """Initialize the Scraper Object
 
         NOTE: Web drivers need to be installed prior to use
 
         Args:
             base_url (str): The url of the root website you wish to scrape
-            search_keywords (list): Specific keywords/search terms that you wish to enter into a search functionality
-            driver (str): The driver/browser you wish to use for accessing the internet
+            keywords_file (str): Directory path to the plaintext file with \n-separated keywords list
+            driver (DriverType): The driver/browser you wish to use for accessing the internet
 
         The general workflow is a follows:
             Create the Scraper object -> Scrape the specified page (storing data in the process) -> Flush/output the structured data to file for later use
 
         example:
         ```
-        scraper = Scraper("website.com", ['potatoes', 'corn-chip'], DriverType.CHROME)
+        scraper = Scraper("website.com", '/keyword/file/path.txt', DriverType.CHROME)
         scraper.scrape()
         scraper.flush_posts('/home/user/Downloads/outfile.txt') # Creates the outputted data file at the specified directory
         ```
         """
 
         self.base_url: str = base_url
-        self.search_keywords: str | list[str] = search_keywords
+        self.keywords: list[str] = []
         self.driver = self._get_driver(driver)
-        self.posts: list[Post] = []
+        self.posts: dict[str : list[Post]] = {}
 
-        self.driver.get(self.base_url)
+        self._load_keywords(keywords_file)
 
     ######## Needs Implementation ########
 
     @abstractmethod
-    def search(self, search_term: str | list[str]):
+    def search(self, search_term: list[str]):
         """Enter keyword(s) search into the desired page. Self.driver will be the
         selenium WebDriver object with the loaded query results page
 
@@ -86,20 +86,6 @@ class Scraper(ABC):
             results page
         """
         pass
-
-    def get_post(self, index: int) -> Post:
-        """Simple getter, grabs all post metadata from self.posts array at the provided index.
-
-        (ie. Post title, post text contents, responses, attached media, etc.)
-
-        Args:
-            index (int): index location of the specified post within the 'self.posts' array
-
-        Returns:
-            Post: Post data object with post elements stored as class members
-        """
-
-        return self.posts[index]
 
     @abstractmethod
     def next_page(self):
@@ -117,7 +103,7 @@ class Scraper(ABC):
 
     @abstractmethod
     def _find_posts():
-        """Based on how the website is structured, define what a "post" is 
+        """Based on how the website is structured, define what a "post" is
         (like a specific url, or a type of page element, for example) and
         gather all copies of every post that can be identified
 
@@ -125,8 +111,8 @@ class Scraper(ABC):
         more data if it is hidden behind pagination/loading-screens/etc."""
 
     @abstractmethod
-    def _new_post(self):
-        """Convert the currently loaded page to a post object, 
+    def _new_post(self, keyword: str):
+        """Convert the currently loaded page to a post object,
         extracting the wanted page data, and storing it in a Post
         object. Then, save the post inside of the Scraper's 'self.post'
         array
@@ -138,7 +124,7 @@ class Scraper(ABC):
     ########## Class methods that will be shared by all children ##########
     def goto(self, url):
         """Navigate to the page specified by the `url` parameter, wrapper around
-        Selenium's `webdriver.get()`
+        Selenium's `WebDriver.get()`
 
         Args:
             url (str): the url of the website you wish to navigate to with selenium
@@ -151,7 +137,7 @@ class Scraper(ABC):
 
         self.driver.get(self.base_url)
 
-    def flushPosts(self, filename):
+    def flush_posts(self, filename):
         """Flush all the posts saved in the self.post buffer, and output to a file at the
         specified output directory. The output data will be structured based on the implementation
         of `post.to_str()` in the Post object
@@ -160,11 +146,18 @@ class Scraper(ABC):
             filename (str): full directory + filename where the file will be saved
         """
 
+        Key = 0
+        Value = 1
+
         with open(filename, "a") as out_file:
-            for post in self.posts:
+            for item in list(self.posts.items()):
+
+                # write out the keyword that was used for the subsequent posts
+                out_file.write(item[Key] + '\n')
 
                 # write the post data to the file
-                out_file.write(post.to_str())
+                for post in item[Value]:
+                    out_file.write('\t' + post.to_str())
 
                 # pop the current item out of the list
                 self.posts.remove(post)
@@ -198,7 +191,7 @@ class Scraper(ABC):
     @abstractmethod
     def _collect_page_metadata() -> dict:
         """TODO - Discuss if this technique can be optimized.
-        
+
         Gathers the needed page items from the current site loaded by
         WebDriver. Gathers data points that will be used to populate Post
         items with corresponding page data
@@ -218,3 +211,16 @@ class Scraper(ABC):
         (ie. If the website's title is the same value as the post's title, you would
         use 'driver.title to populate the respective Post.title)
         """
+
+    def _load_keywords(self, keywords_dir: str):
+        """Helper function to load the keywords directory file as an array
+        then append values to the object's keywords array.
+
+        Args:
+            keywords_dir (str): directory where the keywords-list file is (including filename)
+        """
+        if keywords_dir:
+            with open(keywords_dir, "r") as keyword_file:
+                file_arr = keyword_file.read().splitlines()
+
+            self.keywords = file_arr

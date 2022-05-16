@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 # imports
-from ..Base.Scraper import Scraper, Post
+from ..Base.Scraper import DriverType, Scraper, Post
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from dataclasses import dataclass
 
 # global variables (keep minimal)
@@ -38,24 +39,62 @@ class GooglePost(Post):
 class GoogleGroupsScraper(Scraper):
 
     ########## Public Methods ##########
-    def __init__(self, site_url: str, keywords: list, driver: str):
-        super().__init__(site_url, keywords, driver)
+    def __init__(self, site_url: str, keywords_file: str, driver: DriverType):
+        super().__init__(site_url, keywords_file, driver)
 
     # TODO - Pagination Support
-    def next_page(self):
+    def next_page(self, num_pages: int) -> bool:
         """For Google Groups, this will need to handle clicking to
         the next page of the group to gather the rest of the post
         data
+
+        Args:
+            num_pages (int): The number of pages "deep" that you wish to go
+
+        Returns:
+            bool: If True, there are still pages that need to be grabbed, continue
+                the operation. If False, we have reached the end of the pages, stop
+                the operation.
         """
-        pass
+        page_depth = 1
+
+        raise NotImplementedError
+
+        # identify 'next page' button
+        next_page_button = self.driver.find_element(By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[1]")
+
+        # if next page button is available
+        if next_page_button.get_attribute('disabled') or page_depth > num_pages:
+            # let the user know that this is the last page of the website
+            print("Last page reached...")
+            return False
+        # else 
+        else:
+            # click the button
+            page_depth+=1
+            next_page_button.click()
+            return True
+            
+
 
     def scrape(self):
         """Go and gather each post, save them to the self.posts buffer"""
-        posts = self._find_posts()
 
-        for post in posts:
-            self.goto(post)
-            self._new_post()
+        for keyword in self.keywords:
+
+            # enter the search term to navigate to the wanted query page
+            self.search(keyword)
+
+            # Identify all posts from within the current query
+            posts = self._find_posts()
+
+            if posts:
+                for post in posts:
+                    self.goto(post)
+                    self._new_post(keyword)
+            
+            else:
+                print(f"No results for keyword: {keyword}")
 
     # TODO
     def search(self, search_term: str):
@@ -64,9 +103,16 @@ class GoogleGroupsScraper(Scraper):
         the resulting page
 
         Args:
-            search_term (str): _description_
+            search_term (str): keyword/query that you wish to enter into the search bar
         """
-        pass
+
+        # format string to make manual get request
+        get_syntax = 'search?q='
+        get_space_char = "%20"
+        query = get_syntax + search_term.replace(' ', get_space_char)
+
+        # go to the page with newly formatted request string for url
+        self.goto(self.base_url + '/' + query)
 
     ########## Private Methods ##########
     def _find_posts(self) -> list[str]:
@@ -79,15 +125,16 @@ class GoogleGroupsScraper(Scraper):
             list[str]: list of urls for all identified posts located in the group
 
         #TODO implement pagination support to go to next page
-        #TODO optimize using XPath
         """
-        return set(
-            [
-                a_tag.get_attribute("href")
-                for a_tag in self.driver.find_elements(by=By.TAG_NAME, value="a")
-                if "/c/" in a_tag.get_attribute("href")
-            ]
-        )
+
+        # grabs all of the clickable links to each post (no duplicates) and returns array of links
+        if any(self.driver.find_elements(By.XPATH, "//div[@role='main']/h1")):
+            return None
+
+        else:
+            post_links = self.driver.find_elements(By.XPATH, "//div[@role='gridcell']/a[contains(@href, '/c/')]")
+            parsed_links = [links.get_attribute('href') for links in post_links]
+            return parsed_links
 
     def _collect_page_metadata(self) -> dict:
         """When the desired page (a post containing all wanted data) is loaded,
@@ -95,7 +142,6 @@ class GoogleGroupsScraper(Scraper):
         extract the data by whatever means necessary. Place the values into a dictionary
         that follows the format: { "field-name": "extracted-value", ... }
         """
-
         self._expand_all_posts()
 
         title = self.driver.title
@@ -123,7 +169,7 @@ class GoogleGroupsScraper(Scraper):
         if any(expand_button):
             expand_button.pop().click()
 
-    def _new_post(self):
+    def _new_post(self, keyword: str):
         """After collecting all post data, use this function to
         organize and place the data in their appropriate fields 
         within the class.
@@ -137,7 +183,10 @@ class GoogleGroupsScraper(Scraper):
             media=metadata["media"],
         )
 
-        self.posts.append(newPost)
+        if keyword not in self.posts:
+            self.posts[keyword] = [newPost]
+        else:
+            self.posts[keyword].append(newPost)
 
     def _get_content(self) -> str:
         # find the part of the post webpage that contains <html-blob> tag
