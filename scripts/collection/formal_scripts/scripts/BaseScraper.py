@@ -159,8 +159,9 @@ class Scraper(ABC):
                 for post in item[Value]:
                     out_file.write('\t' + post.to_str())
 
-                # pop the current item out of the list
-                self.posts.remove(post)
+                    # remove the current item out of the list to save space
+                    item[Value].remove(post)
+
 
     ######## Private Class Functions ########
     def _get_driver(self, driver_name: DriverType):

@@ -4,13 +4,15 @@
 # ggroup_selenium_test.py tests, except that this will test
 # the same functionalities using the GoogleScraper class implementation
 
-from src.Base.Scraper import DriverType
-from src.GoogleScraper.GoogleGroupsScraper import GoogleGroupsScraper
+from GoogleGroupsScraper import GoogleGroupsScraper, DriverType
 
 # global variables for reuse
 canis_test_url = "https://www.canis-lab.com/"
 group_test_url = "https://groups.google.com/g/canis-google-group-test-group"
 mlab_group_url = "https://groups.google.com/a/measurementlab.net/g/discuss"
+
+keywords_txt = 'scripts/tests/keywords.txt'
+keywords_mlab = 'scripts/tests/keywords_mlab.txt'
 
 
 def test_ggroup_post_identify():
@@ -18,12 +20,13 @@ def test_ggroup_post_identify():
     Test Selenium's ability to identify and extract text from google groups
     """
 
-    quinton_scraper = GoogleGroupsScraper(group_test_url, '/Users/quinton/Documents/Projects/COMET_Prestudy/scripts/collection/formal_scripts/keywords.txt', DriverType.CHROME)
+    quinton_scraper = GoogleGroupsScraper(group_test_url, keywords_txt, DriverType.CHROME)
     quinton_scraper.scrape()
 
-    for post in list(quinton_scraper.posts.items()):
-        if 'A followup' in post:
-            assert 'A followup' in post[1].title
+    for post in list(quinton_scraper.posts.values()):
+        for value in post:
+            if 'A followup' in value.title:
+                assert 'A followup' in value.title
         
 
 def test_expand_all():
@@ -43,18 +46,21 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    mlab_scraper = GoogleGroupsScraper(mlab_group_url, '/Users/quinton/Documents/Projects/COMET_Prestudy/scripts/collection/formal_scripts/keywords_mlab.txt', DriverType.CHROME)
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME)
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
 
     # Array of post titles to compare against the 'flushed' values
-    collected_titles = [post.title for post in mlab_scraper.posts]
+    collected_titles = []
+    for values in list(mlab_scraper.posts.values()):
+        for post in values:
+            collected_titles.append(post.title)
 
-    mlab_scraper.flushPosts('./post_titles_mlab.txt')
+    mlab_scraper.flush_posts('./post_titles_mlab.txt')
 
     # load lines from the created file into an array for comparison
-    with open("./post_titles.txt", 'r') as out_file:
+    with open("./post_titles_mlab.txt", 'r') as out_file:
         file_lines = out_file.read().splitlines()
 
 
@@ -65,14 +71,19 @@ def test_mlab_group():
         if title in file_lines:
             assert title in file_lines
 
-
-# TODO
-def test_topic_search():
+def test_next_page():
     """
-    Test selenium's ability to access the searchbar and query for keywords
+    Test selenium's ability to go to the next page
+    of a multi-page Google Groups search query
+
+    useful keyword for testing: 'speed'
     """
-    search_class = GoogleGroupsScraper(mlab_group_url, 'internet', DriverType.CHROME)
 
-    search_class.scrape()
+    next_page_scraper = GoogleGroupsScraper(mlab_group_url, keywords_txt, DriverType.CHROME)
 
-    search_class
+    next_page_scraper.search(next_page_scraper.keywords[0])
+
+    while next_page_scraper.next_page():
+        pass
+
+    assert True
