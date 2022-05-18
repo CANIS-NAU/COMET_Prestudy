@@ -83,7 +83,7 @@ def test_next_page():
 
     next_page_scraper.search(next_page_scraper.keywords[0])
 
-    while next_page_scraper.next_page():
+    while next_page_scraper._next_page():
         pass
 
     assert True

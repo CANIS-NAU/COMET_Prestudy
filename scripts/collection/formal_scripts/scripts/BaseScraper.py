@@ -20,7 +20,7 @@ class DriverType(Enum):
 class Post(ABC):
     """Post will act as a "data structure" for abstracting data storage for post data.
     This includes Post titles, text content, responses, digital media, and others.
-    Can be expanded upon by creating new subclasses that add more specific data storage items if needed.
+    These fields can be expanded upon to handle more types of data by creating new subclasses.
     """
 
     title: str
@@ -31,9 +31,11 @@ class Post(ABC):
 
     @abstractmethod
     def to_str(self):
-        """Method for converting the data item into a parse-able string format for saving to file
-        eventually. This will automatically format this object's contents to the desired output
-        format (ie. JSON, CSV, etc.)
+        """TODO - Set a standard TSV organization style for output.
+        
+        This method is used for converting the data within the Post object into a string format for saving to file. 
+        This will automatically format this object's contents to the desired output
+        format (ie. JSON, CSV, TSV, etc.)
         """
         pass
 
@@ -43,24 +45,46 @@ class Scraper(ABC):
 
     ######## Public Methods ########
     def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
-        """Initialize the Scraper Object
+        """Constructor to initialize the Scraper object
 
         NOTE: Web drivers need to be installed prior to use
 
-        Args:
-            base_url (str): The url of the root website you wish to scrape
-            keywords_file (str): Directory path to the plaintext file with \n-separated keywords list
-            driver (DriverType): The driver/browser you wish to use for accessing the internet
-
-        The general workflow is a follows:
-            Create the Scraper object -> Scrape the specified page (storing data in the process) -> Flush/output the structured data to file for later use
+        The simplified workflow is as follows:
+        Create the Scraper object -> Scrape the specified page (storing data in the process) -> Flush/output the structured data to file for later use
 
         example:
-        ```
-        scraper = Scraper("website.com", '/keyword/file/path.txt', DriverType.CHROME)
-        scraper.scrape()
-        scraper.flush_posts('/home/user/Downloads/outfile.txt') # Creates the outputted data file at the specified directory
-        ```
+
+            scraper = Scraper("website.com", '/keyword/file/path.txt', DriverType.CHROME)
+
+            scraper.scrape()
+
+            scraper.flush_posts('/home/user/Downloads/outfile.txt') # Creates the outputted data file at the specified directory
+
+        Parameters
+        ----------
+        base_url : str
+            The "base url" of the website you wish to scrape. This should be the
+            root-level of the website, where all posts can be accessed/searched for.
+
+        keywords_file : str
+            The file directory for a file of keywords. This keywords file should be 
+            line-separated, with one 'keyword/search term' per line.
+
+            example: 
+
+                internet access
+
+                ookla
+
+                speed test
+
+                ...
+
+        driver : DriverType
+            The type of driver you wish to use for automating the website access. 
+            This is essentially the web browser that you wish to use. For whichever
+            driver you choose, make sure that you have the corresponding WebDriver 
+            binary downloaded and accessable via the PATH system variable.
         """
 
         self.base_url: str = base_url
@@ -74,38 +98,45 @@ class Scraper(ABC):
 
     @abstractmethod
     def search(self, search_term: list[str]):
-        """Enter keyword(s) search into the desired page. Self.driver will be the
+        """Enter keyword(s) search into the desired page. the Self.driver class member will act as the
         selenium WebDriver object with the loaded query results page
 
-        Args:
-            search_term (str): search term/keyword that will sent to the website
-            for query
-
-        Returns:
-            WebDriver: selenium WebDriver object with the post-query search
-            results page
+        Parameters
+        ----------
+        search_term : list[str]
+            A list of keywords. These will be entered into the website's search bar
+            and generate posts that will be eventually scraped.
         """
         pass
 
     @abstractmethod
-    def next_page(self):
+    def _next_page(self):
         """Technique for moving to the next page of a pagenated website,
-        or loading all data points from a dynamically growing page structure.
+        or loading all data points from a dynamically growing page structure. How this will
+        work will totally depend on your/the website's needs. 
         """
         pass
 
     @abstractmethod
     def scrape(self):
-        """function for conducting all scrape operations.
-        Acts as an entrypoint for all functionality
+        """This function is responsible for conducting all scrape operations.
+        This method is, essentially the 'main method' of this class. It will
+        use all functionality in order to: Navigate to a webpage, Search for 
+        requested keywords, Scrape resulting search queries for data, and finally
+        save that data into a Post data structure within the Scraper object.
         """
         pass
 
     @abstractmethod
     def _find_posts():
-        """Based on how the website is structured, define what a "post" is
-        (like a specific url, or a type of page element, for example) and
+        """Based on how the website is structured, you will define what a "post" is
+        (like a list urls after a search query, or a type of page element, for example) and
         gather all copies of every post that can be identified
+
+        example:
+            For Google Groups, a post is defined as "Any <a> tag that contains the value '/c/
+            within the href attribute. That logic will be applied here and search for anything
+            that meets those conditions.
 
         NOTE: Will likely need the help of the 'next_page' function to access
         more data if it is hidden behind pagination/loading-screens/etc."""
@@ -115,7 +146,10 @@ class Scraper(ABC):
         """Convert the currently loaded page to a post object,
         extracting the wanted page data, and storing it in a Post
         object. Then, save the post inside of the Scraper's 'self.post'
-        array
+        dictionary.
+
+        The Dictionary structure is as follows:
+            {"search_term": [Post1, Post2, Post3, ...]}
         """
         pass
 
@@ -143,7 +177,7 @@ class Scraper(ABC):
         of `post.to_str()` in the Post object
 
         Args:
-            filename (str): full directory + filename where the file will be saved
+            filename (str): full directory + filename where the file will be saved and data will be written to
         """
 
         Key = 0

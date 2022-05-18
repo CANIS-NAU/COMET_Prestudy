@@ -16,9 +16,7 @@ class GooglePost(Post):
     media: list[bytes]
 
     def to_str(self):
-        """converts post items into \n separated values, Will be changed when actual output format is decided
-        """
-
+        """converts post items into \n separated values, Will be changed when actual output format is decided"""
 
         newline = "\n"
         tab = "\t"
@@ -43,7 +41,7 @@ class GoogleGroupsScraper(Scraper):
     def __init__(self, site_url: str, keywords_file: str, driver: DriverType):
         super().__init__(site_url, keywords_file, driver)
 
-    def next_page(self, num_pages: int | None = None) -> bool:
+    def _next_page(self, num_pages: int | None = None) -> bool:
         """For Google Groups, this will need to handle clicking to
         the next page of the group to gather the rest of the post
         data
@@ -59,11 +57,16 @@ class GoogleGroupsScraper(Scraper):
 
         # identify 'next page' button
         next_page_button = self.driver.find_element(
+            By.XPATH,
+            "(//div[@role='button' and @aria-label='Next page'])[1]//span[@aria-hidden='true']",
+        )
+
+        next_page_button_parent = self.driver.find_element(
             By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[1]"
         )
 
         # if next page button is available
-        is_disabled = next_page_button.get_attribute("aria-disabled") != None
+        is_disabled = next_page_button_parent.get_attribute("aria-disabled") != None
         if is_disabled:
             # let the user know that this is the last page of the website
             print("Last page reached...")
@@ -140,7 +143,7 @@ class GoogleGroupsScraper(Scraper):
                 for links in post_links:
                     parsed_links.append(links.get_attribute("href"))
 
-            if not self.next_page():
+            if not self._next_page():
                 break
 
         return parsed_links
