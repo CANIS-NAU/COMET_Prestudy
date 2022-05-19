@@ -7,24 +7,24 @@ from selenium.webdriver.common.by import By
 @dataclass
 class OCellIDPost(Post):
 
-  # TODO
-  def to_str(self):
-      """Convert data stored within the Post object into a string.
-      This string will be used for data output to file later.
-      """
-      raise NotImplementedError
+    # TODO
+    def to_str(self):
+        """Convert data stored within the Post object into a string.
+        This string will be used for data output to file later.
+        """
+        raise NotImplementedError
 
 
 # Scraper definitions
 class OCellIDScraper(Scraper):
     """Scraper object that specifically handles the OpenCellID forums (community.opencellid.org/)
-    
-      This object will function with the assumption that all scrape operations will
-      occur **After** a query is sent to the website first. Because posts are loaded and removed
-      based on the window's scroll location, until a stable solution is found, the main OpenCellID
-      forums cant be parsed from the root directory. There **has** to be a query sent through the 
-      site's search method first.
-  """
+
+    This object will function with the assumption that all scrape operations will
+    occur **After** a query is sent to the website first. Because posts are loaded and removed
+    based on the window's scroll location, until a stable solution is found, the main OpenCellID
+    forums cant be parsed from the website's ``root`` directory. There **has** to be a 
+    query sent through the site's search method first.
+    """
 
     def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
         super().__init__(base_url, keywords_file, driver)
@@ -52,6 +52,9 @@ class OCellIDScraper(Scraper):
 
         # TODO
         def get_post_content():
+
+            post_content_element = self.driver.find_element(By.XPATH, "")
+
             pass
 
         raise NotImplementedError
@@ -68,7 +71,7 @@ class OCellIDScraper(Scraper):
         """
 
         # TODO - Determine if this is necessary after keyword search - use _next_page so that all posts are visible (scroll all the way down)
-        #self._next_page()
+        # self._next_page()
 
         # if posts exist for this query
         posts_exist = (
@@ -119,6 +122,9 @@ class OCellIDScraper(Scraper):
         method for creating "GET request' URLs. This string is then sent to the
         driver and emulate the keyword search. This method will result in the WebDriver
         being sent to the resulting query URL.
+
+        Luckily, this happens to be the same method used for the Google Group scraper,
+        muy nice :)
 
         Parameters
         ----------

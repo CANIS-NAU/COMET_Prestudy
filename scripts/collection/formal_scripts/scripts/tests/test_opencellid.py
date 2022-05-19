@@ -17,7 +17,7 @@ keywords_mlab = 'scripts/tests/keywords_mlab.txt'
 # TODO 
 def test_ggroup_post_identify():
     """
-    Test Selenium's ability to identify and extract text from google groups
+    Test Selenium's ability to identify and extract simple text from opencellid
     """
 
     quinton_scraper = OCellIDScraper(group_test_url, keywords_txt, DriverType.CHROME)

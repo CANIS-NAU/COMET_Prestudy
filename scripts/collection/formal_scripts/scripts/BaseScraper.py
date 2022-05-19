@@ -5,6 +5,7 @@ from selenium import webdriver
 from abc import abstractmethod, ABC
 from enum import Enum, auto
 from dataclasses import dataclass
+from selenium.webdriver.chrome.options import Options
 
 
 class DriverType(Enum):
@@ -118,7 +119,6 @@ class Scraper(ABC):
         """
         pass
 
-    @abstractmethod
     def scrape(self):
         """This function is responsible for conducting all scrape operations.
         This method is, essentially the 'main method' of this class. It will
@@ -126,10 +126,30 @@ class Scraper(ABC):
         requested keywords, Scrape resulting search queries for data, and finally
         save that data into a Post data structure within the Scraper object.
         """
-        pass
+        # iterate through all provided keywords
+        for keyword in self.keywords:
+
+            # search
+            self.search(keyword)
+
+            # collect post urls from search query
+            post_urls = self._find_posts()
+
+            # if results exist
+            if post_urls:
+
+                # store item into the Scraper.posts dictionary
+                for post in post_urls:
+                    self.goto(post)
+                    self._new_post(keyword)
+
+            # else
+            else:
+                # tell the user that there were no results for this keyword
+                print(f"No results for keyword: {keyword}")
 
     @abstractmethod
-    def _find_posts() -> list[str]:
+    def _find_posts(self) -> list[str]:
         """Based on how the website is structured, you will define what a "post" is
         (like a list urls after a search query, or a type of page element, for example) and
         gather all copies of every post that can be identified
@@ -191,7 +211,7 @@ class Scraper(ABC):
             for item in list(self.posts.items()):
 
                 # write out the keyword that was used for the subsequent posts
-                out_file.write(item[Key] + "\n")
+                out_file.write("*****" + item[Key] + "*****" + "\n")
 
                 # write the post data to the file
                 for post in item[Value]:
@@ -212,7 +232,10 @@ class Scraper(ABC):
             WebDriver: The selenium webdriver object for the requested web browser
         """
         if driver_name == DriverType.CHROME:
-            return webdriver.Chrome()
+            options = Options()
+            options.add_argument('--headless')
+            options.add_argument('--disable-gpu')
+            return webdriver.Chrome(chrome_options=options)
 
         elif driver_name == DriverType.FIREFOX:
             return webdriver.Firefox()
@@ -227,7 +250,7 @@ class Scraper(ABC):
             raise Exception("Invalid DriverType Object")
 
     @abstractmethod
-    def _collect_page_metadata() -> dict:
+    def _collect_page_metadata(self) -> dict:
         """TODO - Discuss if this technique can be optimized.
 
         Gathers the needed page items from the current site loaded by

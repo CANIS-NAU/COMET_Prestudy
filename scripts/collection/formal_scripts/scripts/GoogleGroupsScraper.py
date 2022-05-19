@@ -4,6 +4,8 @@
 from time import sleep
 from BaseScraper import DriverType, Scraper, Post
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from dataclasses import dataclass
 
 # global variables (keep minimal)
@@ -27,7 +29,10 @@ class GooglePost(Post):
             + "Replies:\n"
             + "\n".join(
                 f"{tab}{author}: {reply.replace(newline, ' ')}"
-                for author, reply in self.replies.items()) + '\n\n')
+                for author, reply in self.replies.items()
+            )
+            + "\n\n"
+        )
 
 
 class GoogleGroupsScraper(Scraper):
@@ -48,18 +53,22 @@ class GoogleGroupsScraper(Scraper):
             the operation.
         """
 
-        # identify 'next page' button
-        next_page_button = self.driver.find_element(
-            By.XPATH,
-            "(//div[@role='button' and @aria-label='Next page'])[1]//span[@aria-hidden='true']",
+        # wait condition before clicking
+        wait = WebDriverWait(self.driver, 10)
+
+        #identify 'next page' button
+        next_page_button = wait.until(
+            EC.element_to_be_clickable(
+                (
+                    By.XPATH,
+                    "(//div[@role='button' and @aria-label='Next page'])[1]//span[@aria-hidden='true']",
+                )
+            )
         )
 
-        next_page_button_parent = self.driver.find_element(
-            By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[1]"
-        )
+        next_page_button_parent = self.driver.find_element(By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[1]")
 
         # if next page button is available
-        sleep(1)
         is_disabled = next_page_button_parent.get_attribute("aria-disabled") != None
         if is_disabled:
             # let the user know that this is the last page of the website
@@ -68,30 +77,8 @@ class GoogleGroupsScraper(Scraper):
         # else
         else:
             # click the button
-            sleep(
-                1
-            )  # take a sec to load the page. If it goes to fast, the 'next page' button wont load in
             next_page_button.click()
             return True
-
-    def scrape(self):
-        """Go and gather each post, save them to the self.posts buffer"""
-
-        for keyword in self.keywords:
-
-            # enter the search term to navigate to the wanted query page
-            self.search(keyword)
-
-            # Identify all posts from within the current query
-            posts = self._find_posts()
-
-            if posts:
-                for post in posts:
-                    self.goto(post)
-                    self._new_post(keyword)
-
-            else:
-                print(f"No results for keyword: {keyword}")
 
     def search(self, search_term: str):
         """For Google Groups, navigate to the search bar and
@@ -158,7 +145,7 @@ class GoogleGroupsScraper(Scraper):
             "title": title,
             "author": author,
             "content": content,
-            "replies": replies
+            "replies": replies,
         }
 
     def _expand_all_posts(self):
@@ -210,7 +197,7 @@ class GoogleGroupsScraper(Scraper):
     def _get_post_author(self) -> str:
         """Helper function just for Google Groups...
 
-        Identifies which page element(s) contain **Author Name Content** 
+        Identifies which page element(s) contain **Author Name Content**
         and returns the original post's author's name as a string
 
         Returns
@@ -226,7 +213,7 @@ class GoogleGroupsScraper(Scraper):
     def _get_responses(self) -> dict[str:str]:
         """Helper function just for Google Groups...
 
-        Identifies which page elements contain **Response Content** and 
+        Identifies which page elements contain **Response Content** and
         returns a dictionary of strings with the following format:
 
         ``{author:response, author2:response2, author3:response3, ...}``
