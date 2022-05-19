@@ -11,12 +11,10 @@ from dataclasses import dataclass
 
 @dataclass
 class GooglePost(Post):
-    """Define fields that are necessary for storing relevant Google Posts data"""
-
-    media: list[bytes]
+    """Define any extra fields that are necessary for storing relevant Google Posts data"""
 
     def to_str(self):
-        """converts post items into \n separated values, Will be changed when actual output format is decided"""
+        """converts post items into new-line separated values for file output, Will be changed when actual output format is decided"""
 
         newline = "\n"
         tab = "\t"
@@ -29,10 +27,7 @@ class GooglePost(Post):
             + "Replies:\n"
             + "\n".join(
                 f"{tab}{author}: {reply.replace(newline, ' ')}"
-                for author, reply in self.replies.items()
-            )
-            + f"Media: {len(self.media) if self.media else 0} Media items were found\n\n"
-        )
+                for author, reply in self.replies.items()) + '\n\n')
 
 
 class GoogleGroupsScraper(Scraper):
@@ -41,18 +36,16 @@ class GoogleGroupsScraper(Scraper):
     def __init__(self, site_url: str, keywords_file: str, driver: DriverType):
         super().__init__(site_url, keywords_file, driver)
 
-    def _next_page(self, num_pages: int | None = None) -> bool:
-        """For Google Groups, this will need to handle clicking to
-        the next page of the group to gather the rest of the post
-        data
+    def _next_page(self) -> bool:
+        """For Google Groups, this function handles moving to the
+        next page to gather more data from subsequent 'paginated' pages
 
-        Args:
-            num_pages (int): The number of pages "deep" that you wish to go
-
-        Returns:
-            bool: If True, there are still pages that need to be grabbed, continue
-                the operation. If False, we have reached the end of the pages, stop
-                the operation.
+        Returns
+        -------
+        bool
+            If True, there are still pages that need to be grabbed, continue
+            the operation. If False, we have reached the end of the pages, stop
+            the operation.
         """
 
         # identify 'next page' button
@@ -66,6 +59,7 @@ class GoogleGroupsScraper(Scraper):
         )
 
         # if next page button is available
+        sleep(1)
         is_disabled = next_page_button_parent.get_attribute("aria-disabled") != None
         if is_disabled:
             # let the user know that this is the last page of the website
@@ -160,17 +154,16 @@ class GoogleGroupsScraper(Scraper):
         author = self._get_post_author()
         content = self._get_content()
         replies = self._get_responses()
-        media = None
         return {
             "title": title,
             "author": author,
             "content": content,
-            "replies": replies,
-            "media": media,
+            "replies": replies
         }
 
     def _expand_all_posts(self):
-        """From within the google groups page, make sure that all posts are expanded
+        """Helper function just for Google Groups...
+        From within the google groups page, make sure that all posts are expanded
         by clicking the 'expand all' button on the page.
         """
 
@@ -192,7 +185,6 @@ class GoogleGroupsScraper(Scraper):
             author=metadata["author"],
             post_content=metadata["content"],
             replies=metadata["replies"],
-            media=metadata["media"],
         )
 
         if keyword not in self.posts:
@@ -201,17 +193,49 @@ class GoogleGroupsScraper(Scraper):
             self.posts[keyword].append(newPost)
 
     def _get_content(self) -> str:
+        """Helper function just for Google Groups...
+
+        Identifies which page elements are the **Original Post Body Content**
+        and returns the post text.
+
+        Returns
+        -------
+        str
+            Text content from the original post
+        """
         # find the part of the post webpage that contains <html-blob> tag
         value = self.driver.find_element(By.XPATH, "(//div[@role='region' ])[1]").text
         return value
 
     def _get_post_author(self) -> str:
+        """Helper function just for Google Groups...
+
+        Identifies which page element(s) contain **Author Name Content** 
+        and returns the original post's author's name as a string
+
+        Returns
+        -------
+        str
+            Post author's name
+        """
         value = self.driver.find_element(By.XPATH, "(//h3)[1]").text
         return value
 
     # NOTE: Side-effect, if a single person replies multiple times in the same post, all reply strings
     # are attached to the same single author in the dictionary
     def _get_responses(self) -> dict[str:str]:
+        """Helper function just for Google Groups...
+
+        Identifies which page elements contain **Response Content** and 
+        returns a dictionary of strings with the following format:
+
+        ``{author:response, author2:response2, author3:response3, ...}``
+
+        Returns
+        -------
+        dict
+            Dictionary with grouped reply author and reply body content
+        """
         # find lists of authors and their replies
         author_str = self.driver.find_elements(By.XPATH, "(//h3)[position()>1]")
         response_str = self.driver.find_elements(

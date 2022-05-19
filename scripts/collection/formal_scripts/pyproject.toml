@@ -2,7 +2,7 @@
 name = "formal-collection-scripts"
 version = "0.1.0"
 description = "gather discussion data from respective formal websites for the CANIS Lab"
-authors = ["Quinton Jasper <qjj2@nau.edu>", "Kylie Cook <Put your email here or something>"]
+authors = ["Quinton Jasper <qjj2@nau.edu>", "Kylie Cook <or_dotsomething.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"

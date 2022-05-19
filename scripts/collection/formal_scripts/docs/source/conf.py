@@ -19,7 +19,7 @@ print(os.path.abspath(os.path.join('..', '..', 'scripts')))
 
 # -- Project information -----------------------------------------------------
 
-project = 'CANIS Simple WebScraper API'
+project = 'The CANIS WebScraper Framework'
 copyright = '2022'
 author = 'Quinton Jasper, Kylie Cook'
 

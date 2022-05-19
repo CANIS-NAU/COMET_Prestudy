@@ -6,3 +6,4 @@ scripts
 
    BaseScraper
    GoogleGroupsScraper
+   OpenCellIDScraper

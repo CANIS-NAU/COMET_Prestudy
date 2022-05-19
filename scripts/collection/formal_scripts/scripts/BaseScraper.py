@@ -8,7 +8,8 @@ from dataclasses import dataclass
 
 
 class DriverType(Enum):
-    """Selenium WebDriver type selection enum (for _get_driver)"""
+    """Selection variables, used when selecting the Selenium WebDriver type for
+    :func:`~Scraper._get_driver()`"""
 
     CHROME = auto()
     FIREFOX = auto()
@@ -32,8 +33,8 @@ class Post(ABC):
     @abstractmethod
     def to_str(self):
         """TODO - Set a standard TSV organization style for output.
-        
-        This method is used for converting the data within the Post object into a string format for saving to file. 
+
+        This method is used for converting the data within the Post object into a string format for saving to file.
         This will automatically format this object's contents to the desired output
         format (ie. JSON, CSV, TSV, etc.)
         """
@@ -52,7 +53,7 @@ class Scraper(ABC):
         The simplified workflow is as follows:
         Create the Scraper object -> Scrape the specified page (storing data in the process) -> Flush/output the structured data to file for later use
 
-        example:
+        **Example:** ::
 
             scraper = Scraper("website.com", '/keyword/file/path.txt', DriverType.CHROME)
 
@@ -67,10 +68,10 @@ class Scraper(ABC):
             root-level of the website, where all posts can be accessed/searched for.
 
         keywords_file : str
-            The file directory for a file of keywords. This keywords file should be 
+            The file directory for a file of keywords. This keywords file should be
             line-separated, with one 'keyword/search term' per line.
 
-            example: 
+            *example:*
 
                 internet access
 
@@ -81,9 +82,9 @@ class Scraper(ABC):
                 ...
 
         driver : DriverType
-            The type of driver you wish to use for automating the website access. 
+            The type of driver you wish to use for automating the website access.
             This is essentially the web browser that you wish to use. For whichever
-            driver you choose, make sure that you have the corresponding WebDriver 
+            driver you choose, make sure that you have the corresponding WebDriver
             binary downloaded and accessable via the PATH system variable.
         """
 
@@ -97,7 +98,7 @@ class Scraper(ABC):
     ######## Needs Implementation ########
 
     @abstractmethod
-    def search(self, search_term: list[str]):
+    def search(self, search_term: str):
         """Enter keyword(s) search into the desired page. the Self.driver class member will act as the
         selenium WebDriver object with the loaded query results page
 
@@ -113,7 +114,7 @@ class Scraper(ABC):
     def _next_page(self):
         """Technique for moving to the next page of a pagenated website,
         or loading all data points from a dynamically growing page structure. How this will
-        work will totally depend on your/the website's needs. 
+        work will totally depend on your/the website's needs.
         """
         pass
 
@@ -121,14 +122,14 @@ class Scraper(ABC):
     def scrape(self):
         """This function is responsible for conducting all scrape operations.
         This method is, essentially the 'main method' of this class. It will
-        use all functionality in order to: Navigate to a webpage, Search for 
+        use all functionality in order to: Navigate to a webpage, Search for
         requested keywords, Scrape resulting search queries for data, and finally
         save that data into a Post data structure within the Scraper object.
         """
         pass
 
     @abstractmethod
-    def _find_posts():
+    def _find_posts() -> list[str]:
         """Based on how the website is structured, you will define what a "post" is
         (like a list urls after a search query, or a type of page element, for example) and
         gather all copies of every post that can be identified
@@ -138,7 +139,10 @@ class Scraper(ABC):
             within the href attribute. That logic will be applied here and search for anything
             that meets those conditions.
 
-        NOTE: Will likely need the help of the 'next_page' function to access
+        Returns:
+            list[str]: list of urls for all identified posts located in the webpage
+
+        **NOTE:** Will likely need the help of the 'next_page' function to access
         more data if it is hidden behind pagination/loading-screens/etc."""
 
     @abstractmethod
@@ -187,15 +191,14 @@ class Scraper(ABC):
             for item in list(self.posts.items()):
 
                 # write out the keyword that was used for the subsequent posts
-                out_file.write(item[Key] + '\n')
+                out_file.write(item[Key] + "\n")
 
                 # write the post data to the file
                 for post in item[Value]:
-                    out_file.write('\t' + post.to_str())
+                    out_file.write("\t" + post.to_str())
 
                     # remove the current item out of the list to save space
                     item[Value].remove(post)
-
 
     ######## Private Class Functions ########
     def _get_driver(self, driver_name: DriverType):
@@ -203,7 +206,7 @@ class Scraper(ABC):
         corresponds to the required web browser
 
         Args:
-            driver_name (DriverType): name of the driver that is desired; Options: "Chrome, Firefox, Opera, Safari"
+            driver_name (DriverType): name of the driver that is desired; (Chrome, Firefox, Opera, Safari)
 
         Returns:
             WebDriver: The selenium webdriver object for the requested web browser
