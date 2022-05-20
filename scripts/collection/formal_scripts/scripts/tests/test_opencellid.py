@@ -14,6 +14,16 @@ mlab_group_url = "https://groups.google.com/a/measurementlab.net/g/discuss"
 keywords_txt = 'scripts/tests/keywords.txt'
 keywords_mlab = 'scripts/tests/keywords_mlab.txt'
 
+def test_search_json():
+    """Test the program's ability to send a search query, then return a JSON file with
+    the results
+    """
+
+    ocellid = OCellIDScraper("https://community.opencellid.org/", "", DriverType.CHROME)
+    json_result = ocellid.search("speed")
+
+    assert "Obtain raw measurement" in json_result['topics'][0]['title']
+
 # TODO 
 def test_ggroup_post_identify():
     """

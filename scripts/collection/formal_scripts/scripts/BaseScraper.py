@@ -111,14 +111,6 @@ class Scraper(ABC):
         """
         pass
 
-    @abstractmethod
-    def _next_page(self):
-        """Technique for moving to the next page of a pagenated website,
-        or loading all data points from a dynamically growing page structure. How this will
-        work will totally depend on your/the website's needs.
-        """
-        pass
-
     def scrape(self):
         """This function is responsible for conducting all scrape operations.
         This method is, essentially the 'main method' of this class. It will
