@@ -46,7 +46,7 @@ class Post(ABC):
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
+    def __init__(self, base_url: str, keywords_file: str, driver: DriverType, driver_path: str | None):
         """Constructor to initialize the Scraper object
 
         NOTE: Web drivers need to be installed prior to use
@@ -91,7 +91,7 @@ class Scraper(ABC):
 
         self.base_url: str = base_url
         self.keywords: list[str] = []
-        self.driver = self._get_driver(driver)
+        self.driver = self._get_driver(driver, driver_path)
         self.posts: dict[str : list[Post]] = {}
 
         self._load_keywords(keywords_file)
@@ -172,6 +172,11 @@ class Scraper(ABC):
     ########## END - Needs Implementation ##########
 
     ########## Class methods that will be shared by all children ##########
+    def close(self):
+        """Wrapper around WebDriver.close() when the operation is completed
+        """
+        self.driver.close()
+
     def goto(self, url):
         """Navigate to the page specified by the `url` parameter, wrapper around
         Selenium's `WebDriver.get()`
@@ -213,7 +218,7 @@ class Scraper(ABC):
                     item[Value].remove(post)
 
     ######## Private Class Functions ########
-    def _get_driver(self, driver_name: DriverType):
+    def _get_driver(self, driver_name: DriverType, driver_path: str):
         """Based on input, return a driver object that
         corresponds to the required web browser
 
@@ -223,18 +228,22 @@ class Scraper(ABC):
         Returns:
             WebDriver: The selenium webdriver object for the requested web browser
         """
+
         if driver_name == DriverType.CHROME:
             options = Options()
-            options.add_argument('--headless')
+            #options.add_argument('--headless')
             options.add_argument('--disable-gpu')
-            return webdriver.Chrome(chrome_options=options)
+            return webdriver.Chrome(chrome_options=options, executable_path=driver_path if driver_path else '')
 
+        # TODO - settings
         elif driver_name == DriverType.FIREFOX:
             return webdriver.Firefox()
 
+        # TODO - settings
         elif driver_name == DriverType.SAFARI:
             return webdriver.Safari()
 
+        # TODO - settings
         elif driver_name == DriverType.OPERA:
             return webdriver.Opera()
 

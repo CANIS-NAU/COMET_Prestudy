@@ -27,8 +27,8 @@ class OCellIDScraper(Scraper):
     ``https://community.opencellid.org/t/{**topic_id**}.json?print=true``
     """
 
-    def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
-        super().__init__(base_url, keywords_file, driver)
+    def __init__(self, base_url: str, keywords_file: str, driver: DriverType, driver_dir: str):
+        super().__init__(base_url, keywords_file, driver, driver_dir)
 
     # TODO
     def _collect_page_metadata(self, post_metadata_json) -> dict:

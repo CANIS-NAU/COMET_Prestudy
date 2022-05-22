@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 # imports
-from time import sleep
 from BaseScraper import DriverType, Scraper, Post
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -38,8 +37,8 @@ class GooglePost(Post):
 class GoogleGroupsScraper(Scraper):
 
     ########## Public Methods ##########
-    def __init__(self, site_url: str, keywords_file: str, driver: DriverType):
-        super().__init__(site_url, keywords_file, driver)
+    def __init__(self, site_url: str, keywords_file: str, driver: DriverType, driver_path):
+        super().__init__(site_url, keywords_file, driver, driver_path)
 
     def _next_page(self) -> bool:
         """For Google Groups, this function handles moving to the
@@ -54,32 +53,28 @@ class GoogleGroupsScraper(Scraper):
         """
 
         # wait condition before clicking
-        wait = WebDriverWait(self.driver, 20)
+        wait = WebDriverWait(self.driver, 10)
 
         #identify 'next page' button
-        next_page_button = wait.until(
-            EC.element_to_be_clickable(
-                (
-                    By.XPATH,
-                    "(//div[@role='button'])[last()]"
-                )
-            )
-            #(//div[@role='button' and @aria-label='Next page'])[last()]//span[@aria-hidden='true']
-        )
+        next_page_button = wait.until(EC.element_to_be_clickable((By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[last()]")))
+        #next_page_button = self.driver.find_elements(By.XPATH,"(//div[@role='button' and @aria-label='Next page'])")[-1]
 
-        next_page_button_parent = self.driver.find_element(By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[last()]")
+        
+
+        #next_page_button_parent = self.driver.find_element(By.XPATH, "")
 
         # if next page button is available
-        is_disabled = next_page_button_parent.get_attribute("aria-disabled") != None
-        if is_disabled:
-            # let the user know that this is the last page of the website
-            print("Last page reached...")
-            return False
-        # else
-        else:
+        is_visible = next_page_button.get_attribute('aria-disabled') == None
+        if is_visible:
             # click the button
             next_page_button.click()
             return True
+
+        # else
+        else:
+            # let the user know that this is the last page of the website
+            print("Last page reached...")
+            return False
 
     def search(self, search_term: str):
         """For Google Groups, navigate to the search bar and

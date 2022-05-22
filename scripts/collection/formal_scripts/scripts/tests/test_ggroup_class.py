@@ -5,7 +5,9 @@
 # the same functionalities using the GoogleScraper class implementation
 
 from GoogleGroupsScraper import GoogleGroupsScraper, DriverType
-
+from os import path
+from pathlib import Path
+import os
 # global variables for reuse
 canis_test_url = "https://www.canis-lab.com/"
 group_test_url = "https://groups.google.com/g/canis-google-group-test-group"
@@ -46,10 +48,11 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME)
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME, path.join(str(Path.home()), 'Downloads', 'chromedriver.exe'))
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
+    mlab_scraper.close()
 
     # Array of post titles to compare against the 'flushed' values
     collected_titles = []

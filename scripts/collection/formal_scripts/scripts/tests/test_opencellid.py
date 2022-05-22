@@ -5,6 +5,8 @@
 # the same functionalities using the GoogleScraper class implementation
 
 from OpenCellIDScraper import OCellIDScraper, DriverType
+from os import path 
+from pathlib import Path
 
 # global variables for reuse
 canis_test_url = "https://www.canis-lab.com/"
@@ -19,7 +21,7 @@ def test_search_json():
     the results
     """
 
-    ocellid = OCellIDScraper("https://community.opencellid.org/", "", DriverType.CHROME)
+    ocellid = OCellIDScraper("https://community.opencellid.org/", "", DriverType.CHROME, path.join(str(Path.home()), 'Downloads', 'chromedriver.exe'))
     json_result = ocellid.search("speed")
 
     assert "Obtain raw measurement" in json_result['topics'][0]['title']
@@ -57,7 +59,7 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME)
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME, path.join(str(Path.home()), 'Downloads', 'chromedriver.exe'))
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
