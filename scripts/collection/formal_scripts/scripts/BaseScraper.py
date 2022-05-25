@@ -6,6 +6,8 @@ from abc import abstractmethod, ABC
 from enum import Enum, auto
 from dataclasses import dataclass
 from selenium.webdriver.chrome.options import Options
+import pandas as pd
+import numpy as np
 
 
 class DriverType(Enum):
@@ -46,10 +48,10 @@ class Post(ABC):
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, base_url: str, keywords_file: str, driver: DriverType, driver_path: str | None):
+    def __init__(self, base_url: str, keywords_file: str, driver: DriverType | None):
         """Constructor to initialize the Scraper object
 
-        NOTE: Web drivers need to be installed prior to use
+        NOTE: Web drivers need to be installed prior to use. They will be assumed to be accessible within the PATH variable
 
         The simplified workflow is as follows:
         Create the Scraper object -> Scrape the specified page (storing data in the process) -> Flush/output the structured data to file for later use
@@ -91,8 +93,8 @@ class Scraper(ABC):
 
         self.base_url: str = base_url
         self.keywords: list[str] = []
-        self.driver = self._get_driver(driver, driver_path)
-        self.posts: dict[str : list[Post]] = {}
+        self.driver = self._get_driver(driver)
+        self.posts = pd.DataFrame()
 
         self._load_keywords(keywords_file)
 
@@ -117,6 +119,8 @@ class Scraper(ABC):
         use all functionality in order to: Navigate to a webpage, Search for
         requested keywords, Scrape resulting search queries for data, and finally
         save that data into a Post data structure within the Scraper object.
+
+        Can be overridden if selenium is not required for the scraping operation
         """
         # iterate through all provided keywords
         for keyword in self.keywords:
@@ -218,7 +222,7 @@ class Scraper(ABC):
                     item[Value].remove(post)
 
     ######## Private Class Functions ########
-    def _get_driver(self, driver_name: DriverType, driver_path: str):
+    def _get_driver(self, driver_name: DriverType):
         """Based on input, return a driver object that
         corresponds to the required web browser
 
@@ -233,7 +237,7 @@ class Scraper(ABC):
             options = Options()
             #options.add_argument('--headless')
             options.add_argument('--disable-gpu')
-            return webdriver.Chrome(chrome_options=options, executable_path=driver_path if driver_path else '')
+            return webdriver.Chrome(chrome_options=options)
 
         # TODO - settings
         elif driver_name == DriverType.FIREFOX:
@@ -246,6 +250,9 @@ class Scraper(ABC):
         # TODO - settings
         elif driver_name == DriverType.OPERA:
             return webdriver.Opera()
+
+        elif driver_name == None:
+            return None
 
         else:
             raise Exception("Invalid DriverType Object")

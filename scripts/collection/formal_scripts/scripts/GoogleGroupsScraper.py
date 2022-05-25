@@ -37,8 +37,8 @@ class GooglePost(Post):
 class GoogleGroupsScraper(Scraper):
 
     ########## Public Methods ##########
-    def __init__(self, site_url: str, keywords_file: str, driver: DriverType, driver_path):
-        super().__init__(site_url, keywords_file, driver, driver_path)
+    def __init__(self, site_url: str, keywords_file: str, driver: DriverType):
+        super().__init__(site_url, keywords_file, driver)
 
     def _next_page(self) -> bool:
         """For Google Groups, this function handles moving to the

@@ -48,7 +48,7 @@ def test_mlab_group():
     title and post data, then store to temporary file
     """
 
-    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME, path.join(str(Path.home()), 'Downloads', 'chromedriver.exe'))
+    mlab_scraper = GoogleGroupsScraper(mlab_group_url, keywords_mlab, DriverType.CHROME)
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
