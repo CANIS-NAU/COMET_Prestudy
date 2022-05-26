@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # imports
 from time import sleep
 import argparse
