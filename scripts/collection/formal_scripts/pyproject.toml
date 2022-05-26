@@ -2,16 +2,19 @@
 name = "formal-collection-scripts"
 version = "0.1.0"
 description = "gather discussion data from respective formal websites for the CANIS Lab"
-authors = ["Quinton Jasper <qjj2@nau.edu>", "Kylie Cook <Put your email here or something>"]
+authors = ["Quinton Jasper <qjj2@nau.edu>", "Kylie Cook <or_dotsomething.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 selenium = "^4.1.5"
+requests = "^2.27.1"
+pandas = "^1.4.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
 black = "^22.3.0"
 Sphinx = "^4.5.0"
+pydata-sphinx-theme = "^0.8.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

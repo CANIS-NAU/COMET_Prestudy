@@ -1,0 +1,5 @@
+speed
+network
+access
+ookla
+speedtest
