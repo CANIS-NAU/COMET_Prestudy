@@ -4,51 +4,13 @@
 from selenium import webdriver
 from abc import abstractmethod, ABC
 from enum import Enum, auto
-from dataclasses import dataclass
 from selenium.webdriver.chrome.options import Options
-import pandas as pd
-import numpy as np
-
-
-class DriverType(Enum):
-    """Selection variables, used when selecting the Selenium WebDriver type for
-    :func:`~Scraper._get_driver()`"""
-
-    CHROME = auto()
-    FIREFOX = auto()
-    SAFARI = auto()
-    OPERA = auto()
-
-
-@dataclass
-class Post(ABC):
-    """Post will act as a "data structure" for abstracting data storage for post data.
-    This includes Post titles, text content, responses, digital media, and others.
-    These fields can be expanded upon to handle more types of data by creating new subclasses.
-    """
-
-    title: str
-    author: str
-    post_content: str
-    replies: dict[str, str]
-    # Can add other data points in subclasses based on needs of the website
-
-    @abstractmethod
-    def to_str(self):
-        """TODO - Set a standard TSV organization style for output.
-
-        This method is used for converting the data within the Post object into a string format for saving to file.
-        This will automatically format this object's contents to the desired output
-        format (ie. JSON, CSV, TSV, etc.)
-        """
-        pass
-
 
 # Class definition
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, base_url: str, keywords_file: str, driver: DriverType | None):
+    def __init__(self, base_url: str, keywords_file: str, driver: str | None):
         """Constructor to initialize the Scraper object
 
         NOTE: Web drivers need to be installed prior to use. They will be assumed to be accessible within the PATH variable
@@ -94,7 +56,7 @@ class Scraper(ABC):
         self.base_url: str = base_url
         self.keywords: list[str] = []
         self.driver = self._get_driver(driver)
-        self.posts = pd.DataFrame()
+        self.posts = []
 
         self._load_keywords(keywords_file)
 
@@ -113,6 +75,7 @@ class Scraper(ABC):
         """
         pass
 
+    @abstractmethod
     def scrape(self):
         """This function is responsible for conducting all scrape operations.
         This method is, essentially the 'main method' of this class. It will
@@ -122,27 +85,7 @@ class Scraper(ABC):
 
         Can be overridden if selenium is not required for the scraping operation
         """
-        # iterate through all provided keywords
-        for keyword in self.keywords:
-
-            # search
-            self.search(keyword)
-
-            # collect post urls from search query
-            post_urls = self._find_posts()
-
-            # if results exist
-            if post_urls:
-
-                # store item into the Scraper.posts dictionary
-                for post in post_urls:
-                    self.goto(post)
-                    self._new_post(keyword)
-
-            # else
-            else:
-                # tell the user that there were no results for this keyword
-                print(f"No results for keyword: {keyword}")
+        pass
 
     @abstractmethod
     def _find_posts(self) -> list[str]:
@@ -205,24 +148,11 @@ class Scraper(ABC):
             filename (str): full directory + filename where the file will be saved and data will be written to
         """
 
-        Key = 0
-        Value = 1
-
-        with open(filename, "a") as out_file:
-            for item in list(self.posts.items()):
-
-                # write out the keyword that was used for the subsequent posts
-                out_file.write("*****" + item[Key] + "*****" + "\n")
-
-                # write the post data to the file
-                for post in item[Value]:
-                    out_file.write("\t" + post.to_str())
-
-                    # remove the current item out of the list to save space
-                    item[Value].remove(post)
+        self.posts.to_csv(filename)
+        print("[INFO] Data outputted to file: {}".format(filename))
 
     ######## Private Class Functions ########
-    def _get_driver(self, driver_name: DriverType):
+    def _get_driver(self, driver_name: str):
         """Based on input, return a driver object that
         corresponds to the required web browser
 
@@ -233,22 +163,22 @@ class Scraper(ABC):
             WebDriver: The selenium webdriver object for the requested web browser
         """
 
-        if driver_name == DriverType.CHROME:
+        if driver_name == 'chrome':
             options = Options()
-            #options.add_argument('--headless')
+            options.add_argument('--headless')
             options.add_argument('--disable-gpu')
-            return webdriver.Chrome(chrome_options=options)
+            return webdriver.Chrome(options=options)
 
         # TODO - settings
-        elif driver_name == DriverType.FIREFOX:
+        elif driver_name == 'firefox':
             return webdriver.Firefox()
 
         # TODO - settings
-        elif driver_name == DriverType.SAFARI:
+        elif driver_name == 'safari':
             return webdriver.Safari()
 
         # TODO - settings
-        elif driver_name == DriverType.OPERA:
+        elif driver_name == 'opera':
             return webdriver.Opera()
 
         elif driver_name == None:

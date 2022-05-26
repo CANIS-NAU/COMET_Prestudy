@@ -1,11 +1,10 @@
 # imports
-from random import randint
 from time import sleep
-import numpy as np
+import argparse
 import pandas as pd
 
-from BaseScraper import Scraper, DriverType
-import json, requests
+from BaseScraper import Scraper
+import requests
 
 
 # Scraper definitions
@@ -20,8 +19,9 @@ class OCellIDScraper(Scraper):
     ``https://community.opencellid.org/t/{**topic_id**}.json?print=true``
     """
 
-    def __init__(self, base_url: str, keywords_file: str, driver: DriverType):
+    def __init__(self, base_url: str, keywords_file: str, driver: str):
         super().__init__(base_url, keywords_file, driver)
+        # TODO add replies
 
     def _collect_page_metadata(self, post_json) -> dict:
         """When the desired page (a post containing all wanted data) is loaded,
@@ -48,29 +48,36 @@ class OCellIDScraper(Scraper):
 
         def get_title() -> str:
             (title,) = list(post_json.values())
-            title = title[OG_POST_INDEX]['topic_slug']
+            title = title[OG_POST_INDEX]["topic_slug"]
             return title
 
         def get_date() -> str:
             (date,) = list(post_json.values())
             date = date[OG_POST_INDEX]["created_at"]
-            
+
             return date
 
         def get_responses() -> list[str]:
             (responses,) = list(post_json.values())
             responses = responses[1:]
-            filtered_responses = {item['id']: {'username':item['username'], 'content':item['cooked'], 'date':item['created_at']} for item in responses}
+            filtered_responses = {
+                item["id"]: {
+                    "username": item["username"],
+                    "content": item["cooked"],
+                    "date": item["created_at"],
+                }
+                for item in responses
+            }
             return filtered_responses
 
         def get_author() -> str:
             (author,) = list(post_json.values())
-            author = author[OG_POST_INDEX]['username']
+            author = author[OG_POST_INDEX]["username"]
             return author
 
         def get_post_content() -> str:
             (content,) = list(post_json.values())
-            content = content[OG_POST_INDEX]['cooked']
+            content = content[OG_POST_INDEX]["cooked"]
             return content
 
         def get_post_id() -> str:
@@ -125,7 +132,6 @@ class OCellIDScraper(Scraper):
             JSON data from the requested page
         """
         json_return = requests.get(url).json()
-        sleep(randint(2, 5))
         return json_return
 
     def _new_post(self, post_output):
@@ -141,20 +147,7 @@ class OCellIDScraper(Scraper):
             The JSON data structure of a post on the website
         """
         metadata = self._collect_page_metadata(post_output)
-        self.posts.append(metadata, ignore_index=True)
-        # new_post = OCellIDPost(
-        #     post_id=metadata["post_id"],
-        #     title=metadata["title"],
-        #     post_date=metadata["date"],
-        #     author=metadata["author"],
-        #     post_content=metadata["content"],
-        #     replies=metadata["replies"],
-        # )
-
-        # if new_post.post_id not in self.posts:
-        #     self.posts[new_post.post_id] = [new_post]
-        # else:
-        #     self.posts[new_post.post_id].append(new_post)
+        self.posts.append(metadata)
 
     def scrape(self):
         def get_chunks(target_list: list, chunk_size: int):
@@ -179,16 +172,21 @@ class OCellIDScraper(Scraper):
         for keyword in self.keywords:
 
             # search keyword
+            print("[INFO] Searching With Keyword: {}".format(keyword))
             search_json = self.search(keyword)
 
             # Find post results from keyword search
             search_result_ids = self._find_posts(search_json)
 
-            # if posts exist
+            # if posts exist, get them and store in self.posts
             if search_result_ids:
 
+                print("[INFO] {} results found for keyword: {}".format(len(search_result_ids), keyword))
+
                 # for posts in list of post urls
-                for topic_id in search_result_ids:
+                for iter, topic_id in enumerate(search_result_ids):
+
+                    print("[INFO] Scraping post {}/{}".format(iter+1, len(search_result_ids)))
 
                     # get post data in JSON format
                     post_json = self.goto(f"{self.base_url}/t/{topic_id}.json")
@@ -211,7 +209,7 @@ class OCellIDScraper(Scraper):
 
                         # grab the JSON file for those grouped 20 posts; append the wanted data into an array of dictionaries
                         collected_json = requests.get(post_url_chunk).json()
-                        posts_arr = collected_json['post_stream']['posts']
+                        posts_arr = collected_json["post_stream"]["posts"]
                         if topic_id not in dict_structure:
                             dict_structure[topic_id] = posts_arr
                         else:
@@ -223,7 +221,12 @@ class OCellIDScraper(Scraper):
             # else (no posts found)
             else:
                 # alert the user that no posts were found with the specified keyword
-                print(f"No results for keyword: {keyword}")
+                print(f"[INFO] No results for keyword: {keyword}")
+
+        # convert posts dictionary into a DataFrame
+        print("[INFO] Removing Duplicates")
+        self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=['post_id'])
+
 
     def search(self, search_term: str):
         """Using the Discourse URL API, this function will send a get request to the
@@ -240,7 +243,28 @@ class OCellIDScraper(Scraper):
             The keyword/search-term you wish to query the website for
         """
 
-        open_cell_id_query_url = self.base_url + "search.json?q=" + search_term.replace(' ', '%20')
+        open_cell_id_query_url = (
+            self.base_url + "search.json?q=" + search_term.replace(" ", "%20")
+        )
         search_json = requests.get(open_cell_id_query_url).json()
-        sleep(randint(2, 5))
         return search_json
+
+
+def main():
+    default_group_url = "https://community.opencellid.org/"
+
+    parser = argparse.ArgumentParser(description="Script for scraping MLab google groups discussion forum")
+    parser.add_argument('keywords_dir', help='path to the file where all keywords are listed', type=str)
+    parser.add_argument('data_out', type=str, help="path+filename of the outputted tsv/csv file")
+    parser.add_argument('--driver', '-d', type=str, help="The browser you plan to use for scraping. Defaults to Google Chrome.", default='chrome', choices=['chrome', 'firefox', 'opera', 'safari'])
+
+
+    args = parser.parse_args()
+
+    google_groups_scraper = OCellIDScraper(default_group_url, args.keywords_dir, args.driver)
+    google_groups_scraper.scrape()
+
+    google_groups_scraper.flush_posts(args.data_out)
+
+if __name__ == '__main__':
+    main()
