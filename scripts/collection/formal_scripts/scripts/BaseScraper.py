@@ -3,7 +3,6 @@
 # imports
 from selenium import webdriver
 from abc import abstractmethod, ABC
-from enum import Enum, auto
 from selenium.webdriver.chrome.options import Options
 
 # Class definition
@@ -165,7 +164,7 @@ class Scraper(ABC):
 
         if driver_name == 'chrome':
             options = Options()
-            options.add_argument('--headless')
+            #options.add_argument('--headless')
             options.add_argument('--disable-gpu')
             return webdriver.Chrome(options=options)
 

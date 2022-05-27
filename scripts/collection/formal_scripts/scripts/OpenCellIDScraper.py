@@ -1,5 +1,4 @@
 # imports
-from time import sleep
 import argparse
 import pandas as pd
 
@@ -21,7 +20,6 @@ class OCellIDScraper(Scraper):
 
     def __init__(self, base_url: str, keywords_file: str, driver: str):
         super().__init__(base_url, keywords_file, driver)
-        # TODO add replies
 
     def _collect_page_metadata(self, post_json) -> dict:
         """When the desired page (a post containing all wanted data) is loaded,
@@ -91,7 +89,7 @@ class OCellIDScraper(Scraper):
             "author": get_author(),
             "date": get_date(),
             "content": get_post_content(),
-            "replies": get_responses(),
+            "replies": get_responses()
         }
 
         return metadata_dict

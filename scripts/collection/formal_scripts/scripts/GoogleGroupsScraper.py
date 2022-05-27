@@ -53,10 +53,10 @@ class GoogleGroupsScraper(Scraper):
     def scrape(self):
 
         # iterate through all provided keywords
-        for keyword in self.keywords:
+        for iterator,keyword in enumerate(self.keywords):
 
             # search
-            print("[INFO] Searching With Keyword: {}".format(keyword))
+            print("[INFO] Searching With Keyword: {} ({}/{})".format(keyword, iterator+1, len(self.keywords)))
             self.search(keyword)
 
             # collect post urls from search query
@@ -137,17 +137,21 @@ class GoogleGroupsScraper(Scraper):
         extract the data by whatever means necessary. Place the values into a dictionary
         that follows the format: { "field-name": "extracted-value", ... }
         """
+
         self._expand_all_posts()
 
         title = self.driver.title.lower().replace(' ', '-')
         author = self._get_post_author()
         content = self._get_content()
         replies = self._get_responses()
+        date = self._get_date()
         
         post_id = int(hashlib.md5(title.encode()).hexdigest(), 16)
         return {
             "post_id": post_id,
             "title": title,
+            "date": date,
+            #"media"
             "author": author,
             "content": content,
             "replies": replies,
@@ -173,6 +177,11 @@ class GoogleGroupsScraper(Scraper):
         """
         metadata = self._collect_page_metadata()
         self.posts.append(metadata)
+
+    def _get_date(self) -> str:
+
+        date_item = self.driver.find_element(By.XPATH, "((//section[1])//div//span)[2]").text
+        return date_item
         
 
     def _get_content(self) -> str:
