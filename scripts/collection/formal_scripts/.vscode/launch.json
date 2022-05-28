@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: OpenCellID config",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "${workspaceFolder}/scripts/tests/clean_keywords.txt",
+                "${workspaceFolder}/output_data_ocellID.tsv",
+            ],
+        },
+        {
+            "name": "Python: mlab_config",
+            "type": "python",
+            "request": "launch",
+            "args": [
+                "${workspaceFolder}/scripts/tests/clean_keywords.txt",
+                "${workspaceFolder}/output_data_mlab.tsv",
+            ],
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

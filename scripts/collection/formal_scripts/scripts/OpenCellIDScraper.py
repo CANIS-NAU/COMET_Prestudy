@@ -3,9 +3,34 @@
 # imports
 import argparse
 import pandas as pd
-
 from BaseScraper import Scraper
 import requests
+
+from io import StringIO
+from html.parser import HTMLParser
+
+class MLStripper(HTMLParser):
+    """Copied from stackoverflow :P
+
+    Helps strip unwanted HTML characters from 
+    content text.
+
+    """
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.strict = False
+        self.convert_charrefs= True
+        self.text = StringIO()
+    def handle_data(self, d):
+        self.text.write(d)
+    def get_data(self):
+        return self.text.getvalue()
+
+def strip_tags(html):
+    s = MLStripper()
+    s.feed(html)
+    return s.get_data()
 
 
 # Scraper definitions
@@ -77,7 +102,7 @@ class OCellIDScraper(Scraper):
 
         def get_post_content() -> str:
             (content,) = list(post_json.values())
-            content = content[OG_POST_INDEX]["cooked"]
+            content = strip_tags(content[OG_POST_INDEX]["cooked"].replace('\n', ' '))
             return content
 
         def get_post_id() -> str:
@@ -91,7 +116,7 @@ class OCellIDScraper(Scraper):
             "author": get_author(),
             "date": get_date(),
             "content": get_post_content(),
-            "replies": get_responses()
+            "replies": get_responses(),
         }
 
         return metadata_dict
@@ -181,12 +206,20 @@ class OCellIDScraper(Scraper):
             # if posts exist, get them and store in self.posts
             if search_result_ids:
 
-                print("[INFO] {} results found for keyword: {}".format(len(search_result_ids), keyword))
+                print(
+                    "[INFO] {} results found for keyword: {}".format(
+                        len(search_result_ids), keyword
+                    )
+                )
 
                 # for posts in list of post urls
                 for iter, topic_id in enumerate(search_result_ids):
 
-                    print("[INFO] Scraping post {}/{}".format(iter+1, len(search_result_ids)))
+                    print(
+                        "[INFO] Scraping post {}/{}".format(
+                            iter + 1, len(search_result_ids)
+                        )
+                    )
 
                     # get post data in JSON format
                     post_json = self.goto(f"{self.base_url}/t/{topic_id}.json")
@@ -225,8 +258,7 @@ class OCellIDScraper(Scraper):
 
         # convert posts dictionary into a DataFrame
         print("[INFO] Removing Duplicates")
-        self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=['post_id'])
-
+        self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=["post_id"])
 
     def search(self, search_term: str):
         """Using the Discourse URL API, this function will send a get request to the
@@ -253,18 +285,33 @@ class OCellIDScraper(Scraper):
 def main():
     default_group_url = "https://community.opencellid.org/"
 
-    parser = argparse.ArgumentParser(description="Script for scraping MLab google groups discussion forum")
-    parser.add_argument('keywords_dir', help='path to the file where all keywords are listed', type=str)
-    parser.add_argument('data_out', type=str, help="path+filename of the outputted tsv/csv file")
-    parser.add_argument('--driver', '-d', type=str, help="The browser you plan to use for scraping. Defaults to Google Chrome.", default='chrome', choices=['chrome', 'firefox', 'opera', 'safari'])
-
+    parser = argparse.ArgumentParser(
+        description="Script for scraping MLab google groups discussion forum"
+    )
+    parser.add_argument(
+        "keywords_dir", help="path to the file where all keywords are listed", type=str
+    )
+    parser.add_argument(
+        "data_out", type=str, help="path+filename of the outputted tsv/csv file"
+    )
+    parser.add_argument(
+        "--driver",
+        "-d",
+        type=str,
+        help="The browser you plan to use for scraping. Defaults to None.",
+        default=None,
+        choices=["chrome", "firefox", "opera", "safari"],
+    )
 
     args = parser.parse_args()
 
-    google_groups_scraper = OCellIDScraper(default_group_url, args.keywords_dir, args.driver)
+    google_groups_scraper = OCellIDScraper(
+        default_group_url, args.keywords_dir, args.driver
+    )
     google_groups_scraper.scrape()
 
     google_groups_scraper.flush_posts(args.data_out)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

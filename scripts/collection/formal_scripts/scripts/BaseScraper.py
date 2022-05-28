@@ -147,7 +147,7 @@ class Scraper(ABC):
             filename (str): full directory + filename where the file will be saved and data will be written to
         """
 
-        self.posts.to_csv(filename)
+        self.posts.to_csv(filename, sep="\t", index=False)
         print("[INFO] Data outputted to file: {}".format(filename))
 
     ######## Private Class Functions ########
@@ -164,7 +164,7 @@ class Scraper(ABC):
 
         if driver_name == 'chrome':
             options = Options()
-            #options.add_argument('--headless')
+            options.add_argument('--headless')
             options.add_argument('--disable-gpu')
             return webdriver.Chrome(options=options)
 

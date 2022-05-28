@@ -2,9 +2,10 @@
 
 # imports
 import argparse
-from time import sleep
 from BaseScraper import Scraper
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.expected_conditions import *
 import pandas as pd
 import hashlib
 
@@ -27,22 +28,36 @@ class GoogleGroupsScraper(Scraper):
             the operation.
         """
 
-        #identify 'next page' button
-        next_page_button = self.driver.find_element(By.XPATH, "(//div[@role='button' and @aria-label='Next page'])[last()]")
-        sleep(1)
-        #next_page_button = self.driver.find_elements(By.XPATH,"(//div[@role='button' and @aria-label='Next page'])")[-1]
+        from selenium.webdriver.common.action_chains import ActionChains
+        action_chain = ActionChains(self.driver)
 
-        
-
-        #next_page_button_parent = self.driver.find_element(By.XPATH, "")
+        # identify 'next page' button
+        next_page_button = WebDriverWait(self.driver, 10).until(presence_of_all_elements_located((By.CSS_SELECTOR, 'div[aria-label="Next page"]')))[-1]
 
         # if next page button is available
-        tab_index = int(next_page_button.get_attribute('tabindex'))
-        is_visible =  tab_index == 0
+        tab_index = int(next_page_button.get_attribute("tabindex"))
+        is_visible = tab_index == 0
         if is_visible:
-            # click the button
-            next_page_button.click()
-            return True
+            for attempt in range(10):
+                # attempt to click the button
+                try:
+                    action_chain.move_to_element_with_offset(next_page_button, 1, 1)
+                    action_chain.click()
+                    action_chain.perform()
+                    self.driver.implicitly_wait(1)
+
+                except Exception as e:
+                    # if there is an exception, wait some time and try again; Stops after 10 tries
+                    print("[WARNING] {} Trying again ({})...".format(e, attempt+1))
+                    self.driver.implicitly_wait(2)
+                    continue
+                
+                else:
+                    return True
+
+            raise Exception(e)
+
+
 
         # else
         else:
@@ -53,11 +68,16 @@ class GoogleGroupsScraper(Scraper):
     def scrape(self):
 
         # iterate through all provided keywords
-        for iterator,keyword in enumerate(self.keywords):
+        for iterator, keyword in enumerate(self.keywords):
 
             # search
-            print("[INFO] Searching With Keyword: {} ({}/{})".format(keyword, iterator+1, len(self.keywords)))
+            print(
+                "[INFO] Searching With Keyword: {} ({}/{})".format(
+                    keyword, iterator + 1, len(self.keywords)
+                )
+            )
             self.search(keyword)
+            self.driver.implicitly_wait(1)
 
             # collect post urls from search query
             post_urls = self._find_posts(keyword)
@@ -65,11 +85,15 @@ class GoogleGroupsScraper(Scraper):
             # if results exist
             if post_urls:
 
-                print("[INFO] {} results found for keyword: {}".format(len(post_urls), keyword))
+                print(
+                    "[INFO] {} results found for keyword: {}".format(
+                        len(post_urls), keyword
+                    )
+                )
 
                 # store item into the Scraper.posts dictionary
                 for iter, post in enumerate(post_urls):
-                    print("[INFO] Scraping Post {}/{}".format(iter+1, len(post_urls)))
+                    print("[INFO] Scraping Post {}/{}".format(iter + 1, len(post_urls)))
                     self.goto(post)
                     self._new_post()
 
@@ -78,7 +102,7 @@ class GoogleGroupsScraper(Scraper):
                 # tell the user that there were no results for this keyword
                 print(f"[INFO] No results for keyword: {keyword}")
 
-        self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=['post_id'])
+        self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=["post_id"])
         print("[INFO] Removing Duplicates")
         self.close()
 
@@ -120,16 +144,24 @@ class GoogleGroupsScraper(Scraper):
                 return None
 
             else:
-                post_links = self.driver.find_elements(
-                    By.XPATH, "//div[@role='gridcell']/a[contains(@href, '/c/')]"
-                )
-                for links in post_links:
-                    parsed_links.append(links.get_attribute("href"))
+                post_links = WebDriverWait(self.driver, 10).until(presence_of_all_elements_located((By.XPATH, "//div[@role='gridcell']//a[contains(@href, '/c/')]")))
+
+                for link in post_links:
+                    try:
+                        print("\n\n" + link.get_attribute("outerHTML") + "\n\n")
+                        url = link.get_attribute("href")
+                    except StaleElementReferenceException:
+                        self.driver.refresh()
+                        print("\n\nPOST_REFRESH" + link.get_attribute("outerHTML") + "END_POST_REFRESH\n\n")
+                        continue
+
+                    else:
+                        parsed_links.append(url)
 
             if not self._next_page(keyword):
                 break
 
-        return parsed_links
+        return list(set(parsed_links))
 
     def _collect_page_metadata(self) -> dict:
         """When the desired page (a post containing all wanted data) is loaded,
@@ -140,18 +172,18 @@ class GoogleGroupsScraper(Scraper):
 
         self._expand_all_posts()
 
-        title = self.driver.title.lower().replace(' ', '-')
+        title = self.driver.title.lower().replace(" ", "-")
         author = self._get_post_author()
         content = self._get_content()
         replies = self._get_responses()
         date = self._get_date()
-        
+
         post_id = int(hashlib.md5(title.encode()).hexdigest(), 16)
         return {
             "post_id": post_id,
             "title": title,
             "date": date,
-            #"media"
+            # "media"
             "author": author,
             "content": content,
             "replies": replies,
@@ -164,11 +196,15 @@ class GoogleGroupsScraper(Scraper):
         """
 
         # identify the expand all button on the page
-        expand_button = self.driver.find_elements(
-            By.XPATH, "//div[@role='button' and @aria-label='Expand all']"
-        )
+        expand_button = self.driver.find_elements(By.XPATH, "//div[@role='button' and @aria-label='Expand all']")
+
         if any(expand_button):
-            expand_button.pop().click()
+
+            try:
+                expand_button.pop().click()
+
+            except Exception:
+                pass
 
     def _new_post(self):
         """After collecting all post data, use this function to
@@ -180,9 +216,10 @@ class GoogleGroupsScraper(Scraper):
 
     def _get_date(self) -> str:
 
-        date_item = self.driver.find_element(By.XPATH, "((//section[1])//div//span)[2]").text
+        date_item = self.driver.find_element(
+            By.XPATH, "((//section[1])//div//span)[2]"
+        ).text
         return date_item
-        
 
     def _get_content(self) -> str:
         """Helper function just for Google Groups...
@@ -196,7 +233,7 @@ class GoogleGroupsScraper(Scraper):
             Text content from the original post
         """
         # find the part of the post webpage that contains <html-blob> tag
-        value = self.driver.find_element(By.XPATH, "(//div[@role='region' ])[1]").text
+        value = self.driver.find_element(By.XPATH, "(//div[@role='region' ])[1]").text.replace('\n', ' ')
         return value
 
     def _get_post_author(self) -> str:
@@ -213,7 +250,7 @@ class GoogleGroupsScraper(Scraper):
         value = self.driver.find_elements(By.XPATH, "(//h3)")
         if value[0]:
             return value[0].text
-        else: 
+        else:
             print("what the heck just happened")
 
     # NOTE: Side-effect, if a single person replies multiple times in the same post, all reply strings
@@ -239,28 +276,43 @@ class GoogleGroupsScraper(Scraper):
 
         # stitch together both lists into dictionary with structure {author:response}
         value = {
-            author_str[iter].text: response_str[iter].text
+            author_str[iter].text: response_str[iter].text.replace("\n", ' ')
             for iter in range(len(response_str))
         }
         return value
 
 
-# lastly, we implement a main method to make this script executable 
+# lastly, we implement a main method to make this script executable
 def main():
     default_group_url = "https://groups.google.com/a/measurementlab.net/g/discuss"
 
-    parser = argparse.ArgumentParser(description="Script for scraping MLab google groups discussion forum")
-    parser.add_argument('keywords_dir', help='path to the file where all keywords are listed', type=str)
-    parser.add_argument('data_out', type=str, help="path+filename of the outputted tsv/csv file")
-    parser.add_argument('--driver', '-d', type=str, help="The browser you plan to use for scraping. Defaults to Google Chrome.", default='chrome', choices=['chrome', 'firefox', 'opera', 'safari'])
-
+    parser = argparse.ArgumentParser(
+        description="Script for scraping MLab google groups discussion forum"
+    )
+    parser.add_argument(
+        "keywords_dir", help="path to the file where all keywords are listed", type=str
+    )
+    parser.add_argument(
+        "data_out", type=str, help="path+filename of the outputted tsv/csv file"
+    )
+    parser.add_argument(
+        "--driver",
+        "-d",
+        type=str,
+        help="The browser you plan to use for scraping. Defaults to Google Chrome.",
+        default="chrome",
+        choices=["chrome", "firefox", "opera", "safari"],
+    )
 
     args = parser.parse_args()
 
-    google_groups_scraper = GoogleGroupsScraper(default_group_url, args.keywords_dir, args.driver)
+    google_groups_scraper = GoogleGroupsScraper(
+        default_group_url, args.keywords_dir, args.driver
+    )
     google_groups_scraper.scrape()
 
     google_groups_scraper.flush_posts(args.data_out)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
