@@ -194,10 +194,10 @@ class OCellIDScraper(Scraper):
                 yield target_list[index : index + chunk_size]
 
         # iterate through keywords
-        for keyword in self.keywords:
+        for index, keyword in enumerate(self.keywords):
 
             # search keyword
-            print("[INFO] Searching With Keyword: {}".format(keyword))
+            print("[INFO] Searching With Keyword: {} ({}/{})".format(keyword, index+1, len(self.keywords)))
             search_json = self.search(keyword)
 
             # Find post results from keyword search

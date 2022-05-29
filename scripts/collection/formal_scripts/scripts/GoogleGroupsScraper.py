@@ -6,6 +6,7 @@ from BaseScraper import Scraper
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.expected_conditions import *
+from selenium.common.exceptions import *
 import pandas as pd
 import hashlib
 
@@ -29,10 +30,15 @@ class GoogleGroupsScraper(Scraper):
         """
 
         from selenium.webdriver.common.action_chains import ActionChains
+
         action_chain = ActionChains(self.driver)
 
         # identify 'next page' button
-        next_page_button = WebDriverWait(self.driver, 10).until(presence_of_all_elements_located((By.CSS_SELECTOR, 'div[aria-label="Next page"]')))[-1]
+        next_page_button = WebDriverWait(self.driver, 10).until(
+            presence_of_all_elements_located(
+                (By.CSS_SELECTOR, 'div[aria-label="Next page"]')
+            )
+        )[-1]
 
         # if next page button is available
         tab_index = int(next_page_button.get_attribute("tabindex"))
@@ -48,16 +54,14 @@ class GoogleGroupsScraper(Scraper):
 
                 except Exception as e:
                     # if there is an exception, wait some time and try again; Stops after 10 tries
-                    print("[WARNING] {} Trying again ({})...".format(e, attempt+1))
+                    print("[WARNING] {} Trying again ({})...".format(e, attempt + 1))
                     self.driver.implicitly_wait(2)
                     continue
-                
+
                 else:
                     return True
 
             raise Exception(e)
-
-
 
         # else
         else:
@@ -100,7 +104,7 @@ class GoogleGroupsScraper(Scraper):
             # else
             else:
                 # tell the user that there were no results for this keyword
-                print(f"[INFO] No results for keyword: {keyword}")
+                print(f"[WARNING] No results for keyword: {keyword}")
 
         self.posts = pd.DataFrame(self.posts).drop_duplicates(subset=["post_id"])
         print("[INFO] Removing Duplicates")
@@ -144,15 +148,23 @@ class GoogleGroupsScraper(Scraper):
                 return None
 
             else:
-                post_links = WebDriverWait(self.driver, 10).until(presence_of_all_elements_located((By.XPATH, "//div[@role='gridcell']//a[contains(@href, '/c/')]")))
+                post_links = WebDriverWait(self.driver, 10).until(
+                    presence_of_all_elements_located(
+                        (By.XPATH, "//div[@role='gridcell']//a[contains(@href, '/c/')]")
+                    )
+                )
 
                 for link in post_links:
                     try:
-                        print("\n\n" + link.get_attribute("outerHTML") + "\n\n")
+                        # print("\n\n" + link.get_attribute("outerHTML") + "\n\n")
                         url = link.get_attribute("href")
                     except StaleElementReferenceException:
                         self.driver.refresh()
-                        print("\n\nPOST_REFRESH" + link.get_attribute("outerHTML") + "END_POST_REFRESH\n\n")
+                        print(
+                            "\n\nPOST_REFRESH"
+                            + link.get_attribute("outerHTML")
+                            + "END_POST_REFRESH\n\n"
+                        )
                         continue
 
                     else:
@@ -196,7 +208,9 @@ class GoogleGroupsScraper(Scraper):
         """
 
         # identify the expand all button on the page
-        expand_button = self.driver.find_elements(By.XPATH, "//div[@role='button' and @aria-label='Expand all']")
+        expand_button = self.driver.find_elements(
+            By.XPATH, "//div[@role='button' and @aria-label='Expand all']"
+        )
 
         if any(expand_button):
 
@@ -233,7 +247,9 @@ class GoogleGroupsScraper(Scraper):
             Text content from the original post
         """
         # find the part of the post webpage that contains <html-blob> tag
-        value = self.driver.find_element(By.XPATH, "(//div[@role='region' ])[1]").text.replace('\n', ' ')
+        value = self.driver.find_element(
+            By.XPATH, "(//div[@role='region' ])[1]"
+        ).text.replace("\n", " ")
         return value
 
     def _get_post_author(self) -> str:
@@ -268,18 +284,36 @@ class GoogleGroupsScraper(Scraper):
         dict
             Dictionary with grouped reply author and reply body content
         """
-        # find lists of authors and their replies
-        author_str = self.driver.find_elements(By.XPATH, "(//h3)[position()>1]")
-        response_str = self.driver.find_elements(
-            By.XPATH, "(//div[@role='region' ])[position()>1]"
-        )
 
-        # stitch together both lists into dictionary with structure {author:response}
-        value = {
-            author_str[iter].text: response_str[iter].text.replace("\n", ' ')
-            for iter in range(len(response_str))
-        }
-        return value
+        value = {}
+
+        # find lists of authors and their replies attempt 10 tries
+        try:
+            author_str = WebDriverWait(self.driver, 5).until(presence_of_all_elements_located((By.XPATH, "(//h3)[position()>1]")))
+            response_str = WebDriverWait(self.driver, 5).until(presence_of_all_elements_located((By.XPATH, "(//div[@role='region' ])[position()>1]")))
+            response_dates = WebDriverWait(self.driver, 5).until(presence_of_all_elements_located((By.XPATH, "((//div[@role='region' ])[position()>1])/../div[1]/div[1]/div[2]/span[1]")))
+
+                    # stitch together both lists into dictionary with structure {author:response}
+            if len(author_str) == len(response_str) == len(response_dates):
+                for index in range(len(author_str)):
+                    value[index] = {
+                        "username": author_str[index].text,
+                        "response_date": response_dates[index].text,
+                        "response_content": response_str[index].text.replace("\n", " "),
+                    }
+        except TimeoutException:
+            print("[WARNING] Likely no responses here, Continuing...")
+            pass
+
+        else:
+            raise Exception(
+                "[ERROR] Response Data Mismatch...\n\nResponse Values\nAuthorLen:{}\nReplyDateLen:{}\nReplyContentLen:{}".format(
+                    len(author_str), len(response_dates), len(response_str)
+                )
+            )
+
+        finally:
+            return value
 
 
 # lastly, we implement a main method to make this script executable
