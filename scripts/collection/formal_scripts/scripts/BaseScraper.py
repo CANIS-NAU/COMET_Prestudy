@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 # imports
+from abc import ABC, abstractmethod
 from datetime import datetime
+
 from selenium import webdriver
-from abc import abstractmethod, ABC
 from selenium.webdriver.chrome.options import Options
+
 
 # Class definition
 class Scraper(ABC):
@@ -65,6 +67,36 @@ class Scraper(ABC):
     ######## Needs Implementation ########
 
     @abstractmethod
+    def _collect_page_metadata(self) -> dict:
+        """Abstraction layer that Gathers the needed page items from the currently loaded post.
+        This includes storing the data into a properly structured dictionary that can be
+        added to the self.posts dictionary
+
+        You can use/create any amount of helper functions to accomplish this goal,
+        as long as, in the end, it returns a dictionary of the required data that can be
+        used to add to the self.posts dictionary with the contained data.
+
+        The Dictionary structure is, rougly,  as follows:
+            {'post_id': id#, 'username': name, 'date': date, 'content': content, 'replies': {'reply_id: id, 'reply_date': ... } ...}
+        """
+
+    @abstractmethod
+    def _find_posts(self) -> list[str]:
+        """Based on how the website is structured, you will define what a "post" is
+        (like a list urls after a search query, or a type of page element, for example) and
+        gather all copies of every post that can be identified
+
+        example:
+            For Google Groups, a post is defined as "Any <a> tag that contains the value '/c/
+            within the href attribute. That logic will be applied here and search for any page elements
+            that meet those conditions.
+
+        Returns:
+            list[str]: list of urls for all identified posts located in the webpage
+
+        **NOTE:** Will likely need the help of a 'next_page' function to access
+        more data if it is hidden behind pagination/loading-screens/etc."""
+
     def search(self, search_term: str):
         """Enter keyword(s) search into the desired page. the Self.driver class member will act as the
         selenium WebDriver object with the loaded query results page. If no selenium driver is needed for
@@ -88,22 +120,7 @@ class Scraper(ABC):
         """
         pass
 
-    @abstractmethod
-    def _find_posts(self) -> list[str]:
-        """Based on how the website is structured, you will define what a "post" is
-        (like a list urls after a search query, or a type of page element, for example) and
-        gather all copies of every post that can be identified
-
-        example:
-            For Google Groups, a post is defined as "Any <a> tag that contains the value '/c/
-            within the href attribute. That logic will be applied here and search for any page elements
-            that meet those conditions.
-
-        Returns:
-            list[str]: list of urls for all identified posts located in the webpage
-
-        **NOTE:** Will likely need the help of a 'next_page' function to access
-        more data if it is hidden behind pagination/loading-screens/etc."""
+    
 
     @abstractmethod
     def _new_post(self, keyword: str):
@@ -185,20 +202,6 @@ class Scraper(ABC):
 
         else:
             raise Exception("Invalid DriverType Object")
-
-    @abstractmethod
-    def _collect_page_metadata(self) -> dict:
-        """Abstraction layer that Gathers the needed page items from the currently loaded post.
-        This includes storing the data into a properly structured dictionary that can be
-        added to the self.posts dictionary
-
-        You can use/create any amount of helper functions to accomplish this goal,
-        as long as, in the end, it returns a dictionary of the required data that can be
-        used to add to the self.posts dictionary with the contained data.
-
-        The Dictionary structure is, rougly,  as follows:
-            {'post_id': id#, 'username': name, 'date': date, 'content': content, 'replies': {'reply_id: id, 'reply_date': ... } ...}
-        """
 
     def _load_keywords(self, keywords_dir: str):
         """Helper function to load the keywords directory file as an array

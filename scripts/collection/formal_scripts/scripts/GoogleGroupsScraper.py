@@ -3,13 +3,14 @@
 # imports
 import argparse
 from datetime import datetime
-from BaseScraper import Scraper
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support.expected_conditions import *
-from selenium.common.exceptions import *
+
 import pandas as pd
-import hashlib
+from selenium.common.exceptions import *
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.expected_conditions import *
+from selenium.webdriver.support.wait import WebDriverWait
+
+from BaseScraper import Scraper
 
 
 class GoogleGroupsScraper(Scraper):
@@ -125,6 +126,8 @@ class GoogleGroupsScraper(Scraper):
         """
 
         parsed_links = []
+
+        print("[INFO] Identifying posts within {}".format(self.base_url))
 
         # emulation of a do-while loop
         while True:

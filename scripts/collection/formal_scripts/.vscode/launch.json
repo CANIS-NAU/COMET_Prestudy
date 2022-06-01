@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: RIPE Forums",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["${workspaceFolder}/output_data_RIPE.tsv", "-a", "01/2021"]
+        },
+        {
             "name": "Python: OpenCellID config",
             "type": "python",
             "request": "launch",
@@ -12,7 +21,9 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "${workspaceFolder}/output_data_ocellID.tsv", "-a", "01/2017"
+                "${workspaceFolder}/output_data_ocellID.tsv",
+                "-a",
+                "01/2017"
             ],
         },
         {
@@ -20,7 +31,9 @@
             "type": "python",
             "request": "launch",
             "args": [
-                "${workspaceFolder}/output_data_mlab.tsv", "-a", "01/2020"
+                "${workspaceFolder}/output_data_mlab.tsv",
+                "-a",
+                "01/2020"
             ],
             "program": "${file}",
             "console": "integratedTerminal",
