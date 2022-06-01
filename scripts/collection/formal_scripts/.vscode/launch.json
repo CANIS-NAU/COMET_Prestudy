@@ -12,8 +12,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "${workspaceFolder}/scripts/tests/clean_keywords.txt",
-                "${workspaceFolder}/output_data_ocellID.tsv",
+                "${workspaceFolder}/output_data_ocellID.tsv", "-a", "01/2017"
             ],
         },
         {
@@ -21,8 +20,7 @@
             "type": "python",
             "request": "launch",
             "args": [
-                "${workspaceFolder}/scripts/tests/clean_keywords.txt",
-                "${workspaceFolder}/output_data_mlab.tsv",
+                "${workspaceFolder}/output_data_mlab.tsv", "-a", "01/2020"
             ],
             "program": "${file}",
             "console": "integratedTerminal",
