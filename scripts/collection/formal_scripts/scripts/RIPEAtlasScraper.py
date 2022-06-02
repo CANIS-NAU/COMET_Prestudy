@@ -48,7 +48,7 @@ class RipeAtlasScraper(Scraper):
         def get_post_content() -> str:
             post_content_element = self.driver.find_element(
                 By.XPATH, "(//pre[@class='padding'])[1]"
-            ).text
+            ).text.replace('\n', '')
             return post_content_element
 
         def get_responses():
@@ -58,11 +58,21 @@ class RipeAtlasScraper(Scraper):
                 ).text
                 return author_element
 
-            def get_response_date(reply_element) -> datetime:
+            # Sometimes, there are rare instances where the website did not
+            # capture the date of a response, just the timezone 'CET'
+            # The try/except is designed to send None
+            # in case parser can't detect a valid date.
+            def get_response_date(reply_element):
                 date_element = reply_element.find_element(
                     By.XPATH, ".//p[@class='messagedate smallText']"
                 ).text
-                return parser.parse(date_element)
+                try:
+                    datetime_date = parser.parse(date_element, ignoretz=True)
+                except parser.ParserError:
+                    return (None, None)
+
+                else:
+                    return (datetime_date.timestamp(), datetime_date.strftime("%Y-%m-%d %H:%M:%S"))
 
             # TODO - clean out previous response text (like email)
             def get_response_content(reply_element) -> str:
@@ -79,14 +89,14 @@ class RipeAtlasScraper(Scraper):
 
             for index, response in enumerate(response_element_arr):
                 resp_author = get_response_author(response)
-                resp_date = get_response_date(response)
+                resp_epoch, resp_date = get_response_date(response)
                 resp_content = get_response_content(response)
 
                 temp_resp_container[index] = {
                     "username": resp_author,
-                    "date_epoch": resp_date.timestamp(),
-                    "date_ymd": resp_date.strftime("%Y-%m-%d %H:%M:%S"),
-                    "response_content": resp_content,
+                    "date_epoch": resp_epoch,
+                    "date_ymd": resp_date,
+                    "response_content": resp_content.replace('\n', ' '),
                 }
 
             return temp_resp_container
@@ -114,6 +124,8 @@ class RipeAtlasScraper(Scraper):
         }
 
     def _find_posts(self) -> list[str]:
+
+        print("[INFO] Searching for posts as old as {}".format(self.age_threshold.strftime('%m/%y')))
 
         # temp list to store each identified post link
         link_list = []
@@ -226,9 +238,11 @@ class RipeAtlasScraper(Scraper):
 def main():
 
     ripe_atlas_forum_url = "https://www.ripe.net/participate/mail/forum/ripe-atlas"
-    ripe_atlas_cooperation_forum_url = (
+    ripe_cooperation_forum_url = (
         "https://www.ripe.net/participate/mail/forum/cooperation-wg"
     )
+
+    sources = [ripe_atlas_forum_url, ripe_cooperation_forum_url]
 
     parser = argparse.ArgumentParser(
         description="Scrape the RIPE Atlas community forums for data"
