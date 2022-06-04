@@ -6,13 +6,20 @@ from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.remote.webdriver import WebDriver
 
 
 # Class definition
 class Scraper(ABC):
 
     ######## Public Methods ########
-    def __init__(self, base_url: str, keywords_file: str | None, driver: str | None, age_threshold: str | None):
+    def __init__(
+        self,
+        base_url: str,
+        keywords_file: str | None,
+        driver: str | None,
+        age_threshold: str | None,
+    ):
         """Constructor to initialize the Scraper object
 
         NOTE: Web drivers need to be installed prior to use. They will be assumed to be accessible within the system's PATH variable
@@ -57,8 +64,12 @@ class Scraper(ABC):
 
         self.base_url: str = base_url
         self.keywords: list[str] = []
-        self.driver = self._get_driver(driver)
-        self.age_threshold = datetime.strptime(age_threshold, "%m/%Y") if age_threshold is not None else datetime(1,1,1) # set the oldest time threshold to "beginning of time"
+        self.driver: WebDriver = self._get_driver(driver)
+        self.age_threshold = (
+            datetime.strptime(age_threshold, "%m/%Y")
+            if age_threshold is not None
+            else datetime(1, 1, 1)
+        )  # set the oldest time threshold to "beginning of time"
         self.posts = []
 
         if keywords_file is not None:
@@ -120,12 +131,9 @@ class Scraper(ABC):
         """
         pass
 
-    
-
     @abstractmethod
     def _new_post(self, keyword: str):
-        """With the information gathered from _collect_page_metadata(), append the page data into this object's self.posts variable.
-        """
+        """With the information gathered from _collect_page_metadata(), append the page data into this object's self.posts variable."""
         pass
 
     ########## END - Needs Implementation ##########
@@ -166,7 +174,7 @@ class Scraper(ABC):
         print("[INFO] Data outputted to file: {}".format(filename))
 
     ######## Private Class Functions ########
-    def _get_driver(self, driver_name: str):
+    def _get_driver(self, driver_name: str) -> WebDriver:
         """Based on input, return a driver object that
         corresponds to the required web browser
 
@@ -179,22 +187,22 @@ class Scraper(ABC):
             WebDriver: The selenium webdriver object for the requested web browser
         """
 
-        if driver_name == 'chrome':
+        if driver_name == "chrome":
             options = Options()
-            #options.add_argument('--headless')
-            options.add_argument('--disable-gpu')
+            # options.add_argument('--headless')
+            options.add_argument("--disable-gpu")
             return webdriver.Chrome(options=options)
 
         # TODO - settings
-        elif driver_name == 'firefox':
+        elif driver_name == "firefox":
             return webdriver.Firefox()
 
         # TODO - settings
-        elif driver_name == 'safari':
+        elif driver_name == "safari":
             return webdriver.Safari()
 
         # TODO - settings
-        elif driver_name == 'opera':
+        elif driver_name == "opera":
             return webdriver.Opera()
 
         elif driver_name == None:

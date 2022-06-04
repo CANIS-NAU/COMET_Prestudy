@@ -9,9 +9,9 @@ from dateutil import parser
 from selenium.common.exceptions import *
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions, wait
+from selenium.webdriver.remote.webelement import WebElement
 
 from BaseScraper import Scraper
-
 
 class FCCDisqusScraper(Scraper):
     """For this scraper, we're going to have to combine the results of multiple
@@ -29,50 +29,38 @@ class FCCDisqusScraper(Scraper):
         # for the purposes of formal scrapers, I will set all keyword directories to None
         super().__init__(base_url, None, driver, age_threshold)
 
-    def _collect_page_metadata(self, index) -> dict:
-        # Create helper functions to handle each data task, Examples could include:
+    def _collect_page_metadata(self, index, post_data) -> dict:
 
-        # get post title
-        def get_post_title():
-            post_title_element = self.driver.find_element(
-                By.XPATH,
-                "//h2[@class='discussion-title text-brand link-default-hover']",
-            ).text
-            return post_title_element
-
+        # Create helper functions to handle each data task
+        
         # get post date
-        def get_post_dates() -> tuple:
-            raise NotImplementedError
-
-        # get post author
-        def get_post_author() -> str:
-            raise NotImplementedError
-
-        # get post content
-        def get_post_content() -> str:
-            raise NotImplementedError
+        def get_post_dates(date_str: str) -> tuple:
+            date = parser.parse(date_str)
+            return date.timestamp(), date.strftime("%Y-%m-%d %H:%M:%S")
 
         # get responses
         def get_responses() -> dict:
 
             # get response author
-            def get_response_author() -> str:
+            def get_response_author(resp_element: WebElement) -> str:
                 raise NotImplementedError
 
             # get response date
-            def get_response_date() -> tuple:
+            def get_response_date(resp_element: WebElement) -> tuple:
                 raise NotImplementedError
 
             # get response content
-            def get_response_content() -> str:
+            def get_response_content(resp_element: WebElement) -> str:
                 raise NotImplementedError
 
             # temporary response container
             temp_resp_container = {}
 
+
+
             # get array of all response WebDriver Elements
-            response_elements = wait.WebDriverWait(self.driver, 3).until(
-                expected_conditions.presence_of_all_elements_located(
+            response_elements: list[WebElement] = wait.WebDriverWait(self.driver, 3).until(
+                expected_conditions.visibility_of_all_elements_located(
                     (By.XPATH, "//li[@class='post']")
                 )
             )
@@ -96,28 +84,69 @@ class FCCDisqusScraper(Scraper):
             # return remporary response container
             return temp_resp_container
 
-        # create structured post dictionary with ID as primary key
-        title = get_post_title()
-        author = get_post_author()
-        date_epoch, date = get_post_dates()
-        content = get_post_content()
         responses = get_responses()
 
         # return structured post data dictionary
         return {
-            "post_id": index,
-            "title": title,
-            "author": author,
-            "date_epoch": date_epoch,
-            "date_ymd": date,
-            "content": content,
             "responses": responses,
         }
 
-    def _find_posts(self) -> list[str]:
+    def _find_posts(self) -> dict:
 
-        # temp list to store each identified post link
-        disqus_link_list = []
+        def get_url_pairs(post) -> tuple:
+
+            # get FCC post link attribute
+            fcc_url = self._post_url_sanitizer(post.find_element(By.XPATH, ".//h2/a").get_attribute("href"))
+
+            # get Disqus link attribute
+            disqus_url = post.find_element(By.XPATH, ".//footer//a").get_attribute("href")
+
+            return (fcc_url, disqus_url)
+
+        def grab_text_from_new_tab(url:str, **xpaths) -> str:
+            """Opens a new tab, then goes to the specified URL
+            within the new tab and grabs the element with the
+            provided XPATH and function.
+
+            Parameters
+            ----------
+            url : str
+                the URL that the new tab should go to once opened
+
+            xpath : str
+                the XPATH of the element you wish to capture in the new tab
+            """
+
+            tmp_dict = {}
+
+            # save main window
+            main_window = self.driver.current_window_handle
+
+            # open new blank tab
+            self.driver.execute_script("window.open();")
+
+            # switch to new window (second in window_handles array)
+            self.driver.switch_to.window(self.driver.window_handles[1])
+
+            # go to the new url in the new tab
+            self.driver.get(url)
+
+            for key, xpath in xpaths.items():
+
+                # grab the wanted element and data
+                tmp_dict[key] = self.driver.find_element(By.XPATH, xpath).text.replace('\n', ' ')
+
+            # close this tab
+            self.driver.close()
+
+            # get back to the main window
+            self.driver.switch_to.window(main_window)
+
+            return tmp_dict
+
+
+        # temp list to store each (Post_metadata, Disqus_link) grouping
+        link_tuple_list: list[tuple] = []
 
         # use next-page method to load all posts
         self._next_page()
@@ -131,27 +160,30 @@ class FCCDisqusScraper(Scraper):
 
         # for post in posts
         for post in post_elements:
-            pass
 
-            # get post link attribute
-
-            # go to post on FCC website
+            # generate url pairs (FCC, Disqus)
+            fcc_url, disqus_url = get_url_pairs(post)
 
             # get post date element from FCC website
+            post_metadata = grab_text_from_new_tab(fcc_url, title="//h1[@class='page__title title']", author="//div[@class='field field-name-field-author-fcc-leadership field-type-entityreference field-label-hidden author-block']/a", date="//span[@class='date-display-single']", content="(//div[@class='field-item even'])[2]")
 
             # if date within date range (Now -> X)
-
-                # extract FCC.gov redirect url
+            if parser.parse(post_metadata['date']) >= self.age_threshold:
 
                 # append to temp list
+                link_tuple_list.append((post_metadata, disqus_url))
 
             # else break
+            else: 
+                break
 
         # return temp list of urls
-        raise NotImplementedError
+        return link_tuple_list
 
-    def _new_post(self, keyword: str):
-        raise NotImplementedError
+    def _new_post(self, index: int, post_metadata: dict) -> None:
+        post_md = post_metadata
+        resp_metadata = self._collect_page_metadata(index, post_metadata)
+        self.posts.append({'post_id': index}+post_md+resp_metadata)
 
     def _next_page(self) -> None:
         """Scrolls page all the way down until all content is loaded
@@ -187,37 +219,47 @@ class FCCDisqusScraper(Scraper):
 
         str_to_remove = "drupal7admin."
         if str_to_remove in url:
-            url.replace(str_to_remove, "")
+            url = url.replace(str_to_remove, "")
 
         return url
 
     def scrape(self):
 
         # wait a bit before starting scraping (implicit wait)
+        self.driver.implicitly_wait(1)
 
         # go to base url
+        self.goto(self.base_url)
 
         # find post urls for all pages (until posts are outside of date range)
+        post_urls = self._find_posts()
 
         # if url's are found (there should be)
+        if any(post_urls):
 
             # for each url identified
+            for index, (post_metadata, disqus_url) in enumerate(post_urls):
 
                 # tell the user the progress of scraping
+                print("[INFO] Scraping post {}/{}...".format(index+1, len(post_urls)))
 
                 # go to post url
+                self.goto(disqus_url)
 
                 # Identify wanted page metadata and create new post structure
+                self._new_post(index, post_metadata=post_metadata)
 
         # else
+        else:
             # tell the user that no posts were found
+            print("[WARNING] No posts found...")
 
         
         # convert generated dictionary structure to pandas DataFrame
+        self.posts = pd.DataFrame(self.posts)
 
         # close the WebDriver Connection
-        raise NotImplementedError
-        
+        self.close()       
 
 def main():
     parser = argparse.ArgumentParser(
@@ -256,3 +298,6 @@ def main():
     disqus_scraper.scrape()
 
     disqus_scraper.flush_posts(args.data_out)
+
+if __name__ == "__main__":
+    main()
