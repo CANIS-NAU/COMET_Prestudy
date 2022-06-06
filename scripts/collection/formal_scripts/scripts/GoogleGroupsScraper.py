@@ -240,7 +240,9 @@ class GoogleGroupsScraper(Scraper):
             By.XPATH, "((//section[1])//div//span)[2]"
         ).text
 
-        date_as_datetime_format = datetime.strptime(date_item, "%b %d, %Y, %I:%M:%S %p")
+        sanitize_date_item = re.sub("[\(\[].*?[\)\]]", "", date_item).strip()
+
+        date_as_datetime_format = datetime.strptime(sanitize_date_item, "%b %d, %Y, %I:%M:%S %p")
 
         return date_as_datetime_format
 

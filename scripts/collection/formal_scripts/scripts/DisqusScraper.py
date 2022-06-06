@@ -8,7 +8,7 @@ import pandas as pd
 from dateutil import parser
 from selenium.common.exceptions import *
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions, wait
+from selenium.webdriver.support import wait, expected_conditions as ec
 from selenium.webdriver.remote.webelement import WebElement
 
 from BaseScraper import Scraper
@@ -30,7 +30,7 @@ class FCCDisqusScraper(Scraper):
         # for the purposes of formal scrapers, I will set all keyword directories to None
         super().__init__(base_url, None, driver, age_threshold)
 
-        self.wait = wait.WebDriverWait(self.driver, 5)
+        self.wait = wait.WebDriverWait(self.driver, 3)
 
     def _collect_page_metadata(self, index: str, post_data: dict) -> dict:
 
@@ -43,6 +43,35 @@ class FCCDisqusScraper(Scraper):
 
         # get responses
         def get_responses() -> dict:
+
+            def close_cookies_footer() -> None:
+                try:
+                    deny_cookies_button = self.wait.until(ec.presence_of_element_located((By.XPATH, '//button[@class="osano-cm-deny osano-cm-buttons__button osano-cm-button osano-cm-button--type_deny"]')))
+                    deny_cookies_button.click()
+                except:
+                    pass
+
+            def load_all_responses() -> None:
+                while True:
+                    # if Get_More_Posts button exists, click it
+                    try:
+                        self._next_page()
+                        self.wait.until(
+                            ec.frame_to_be_available_and_switch_to_it(
+                                (By.XPATH, '//iframe[@title="Disqus"]')
+                            )
+                        )
+                        more_comments_button = self.driver.find_element(By.XPATH, '//a[@class="btn load-more__button"]')
+                        if more_comments_button.is_displayed():
+                            more_comments_button.click()
+                            self.driver.switch_to.default_content()
+                            sleep(10)
+                        else:
+                            self.driver.switch_to.default_content()
+                            break
+                        self.driver.implicitly_wait(10)
+                    except Exception as e:
+                        raise e
 
             # get response author
             def get_response_author(resp_element: WebElement) -> str:
@@ -68,14 +97,21 @@ class FCCDisqusScraper(Scraper):
             # temporary response container
             temp_resp_container = {}
 
+            # get rid of the cookie-permission footer element at the bottom of the website
+            close_cookies_footer()
+
+            # Scroll to the bottom of the page for extra content
+            load_all_responses()
+
             # get array of all response WebDriver Elements
             self.wait.until(
-                expected_conditions.frame_to_be_available_and_switch_to_it(
+                ec.frame_to_be_available_and_switch_to_it(
                     (By.XPATH, '//iframe[@title="Disqus"]')
                 )
             )
+
             response_elements = self.wait.until(
-                expected_conditions.presence_of_all_elements_located(
+                ec.presence_of_all_elements_located(
                     (By.XPATH, "//li[@class='post']")
                 )
             )
@@ -83,7 +119,7 @@ class FCCDisqusScraper(Scraper):
             # for response in array of response elements
             for index, response in enumerate(response_elements):
 
-                self.driver.implicitly_wait(2)
+                self.driver.implicitly_wait(3)
 
                 # create structured response dictionary with ID as primary key
                 resp_author = get_response_author(response)
@@ -181,7 +217,7 @@ class FCCDisqusScraper(Scraper):
 
         # collect all loaded posts
         post_elements = wait.WebDriverWait(self.driver, 3).until(
-            expected_conditions.presence_of_all_elements_located(
+            ec.presence_of_all_elements_located(
                 (By.XPATH, "//div[@class='cards']/div")
             )
         )
