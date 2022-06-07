@@ -5,14 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Twitter Scraper",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": []
+        },
+        {
             "name": "Python: FCC Disqus Page",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["${workspaceFolder}/output_data_FCC_DISQUS_01_2017.tsv",
-            "-a", "01/2017"]
+            "args": [
+                "${workspaceFolder}/output_data_FCC_DISQUS_01_2017.tsv",
+                "-a",
+                "01/2017"
+            ]
         },
         {
             "name": "Python: RIPE Forums",
