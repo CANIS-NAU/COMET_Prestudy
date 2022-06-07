@@ -4,7 +4,7 @@
 # ggroup_selenium_test.py tests, except that this will test
 # the same functionalities using the GoogleScraper class implementation
 
-from GoogleGroupsScraper import GoogleGroupsScraper, DriverType
+from scripts.MlabScraper import GoogleGroupsScraper, DriverType
 import pandas as pd
 
 # global variables for reuse
