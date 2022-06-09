@@ -16,8 +16,6 @@
                 "01/2020",
                 "-o",
                 "${workspaceFolder}/test_twitter/",
-                "-f",
-                "%d_twitter_data.csv",
                 "-k",
                 "${workspaceFolder}/scripts/collection/keywords/testing_keywords.txt",
                 "-c",

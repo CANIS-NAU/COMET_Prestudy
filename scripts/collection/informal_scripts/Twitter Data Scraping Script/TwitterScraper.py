@@ -11,13 +11,50 @@ from BaseScraper import Scraper
 
 # Glob Constants
 # TODO - Finalize file naming convention
-FILENAME_CONVENTION = "{}_{}_twitter_scrape_data.csv" # {date-start}_{date-end}_twitter_scrape_data.csv
+FILENAME_CONVENTION = (
+    "{}_{}_twitter_scrape_data.csv"  # {date-start}_{date-end}_twitter_scrape_data.csv
+)
 ATTRIB_STR = "id,text,attachments,author_id,conversation_id,created_at,in_reply_to_user_id,lang,public_metrics,referenced_tweets"
-MAX_PER_CALL = 100
-MAX_TWEETS = 10
+EXPANSIONS = "author_id,in_reply_to_user_id,attachments.media_keys"
+USER_FIELDS = "id,name,username"
+MEDIA_FIELDS = "media_key,type,url,variants"
+
+MAX_PER_CALL = 5
+MAX_TWEETS = 5
 
 
 def daterange(start_date: datetime, end_date: datetime) -> tuple[datetime, datetime]:
+    """Take a date range from start to finish, then generate an iterable that
+    increments over those date ranges at 1 year intervals
+
+    Parameters
+    ----------
+    start_date : datetime
+        the earliest date in the range
+    end_date : datetime
+        the most recent date in the range (usually "now")
+
+    Yields
+    ------
+    Iterator[tuple[datetime, datetime]]
+        generated start/end dates exactly 1 year apart. If the time difference is
+        less than 1 year between the start date and end date, the specified end date
+        will be used. 
+
+        ex.
+            ``start = datetime(2020, 1, 1)
+            end = datetime(2022, 2, 22)
+
+            for item in daterange(start, end):
+                print(item)``
+
+            result:
+
+                ``(datetime.datetime(2020, 1, 1, 0, 0), datetime.datetime(2020, 12, 31, 0, 0))``
+                ``(datetime.datetime(2020, 12, 31, 0, 0), datetime.datetime(2021, 12, 31, 0, 0))``
+                ``(datetime.datetime(2021, 12, 31, 0, 0), datetime.datetime(2022, 2, 22, 0, 0))``
+
+    """
     while start_date <= end_date:
         new_start_end_tuple = (
             start_date,
@@ -58,17 +95,12 @@ class TwitterScraper(Scraper):
             The JSON object returned from the collect_results function.
         """
 
-        tweets = data[0]["data"] if "data" in data[0] else None
-        media = data[0]["includes"]["media"] if "media" in data[0]["includes"] else None
-        users = data[0]["includes"]["users"] if "users" in data[0]["includes"] else None
+        def get_tweet_data(tweet):
 
-        for tweet in tweets:
             id = tweet["id"] if "id" in tweet else None
             text = tweet["text"] if "text" in tweet else None
-            attachments = (
-                None  # if there are attachments find them and place them here or none
-            )
-
+            attachments = None  # if there are attachments find them and place them here or none
+            
             # if there are attachments in the tweet
             if "attachments" in tweet:
                 # get the media keys
@@ -115,6 +147,7 @@ class TwitterScraper(Scraper):
                 tweet["referenced_tweets"] if "referenced_tweets" in tweet else None
             )
 
+            datetime_created_at = parser.parse(created_at)
             formatted_data = {
                 "id": id,
                 "text": text,
@@ -123,18 +156,28 @@ class TwitterScraper(Scraper):
                 "author_name": author_name,
                 "author_username": author_username,
                 "conversation_id": conversation_id,
-                "created_at": created_at,
+                "created_at_ymd": datetime_created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "created_at_epoch": datetime_created_at.timestamp(),
                 "in_reply_to_user_id": in_reply_to_user_id,
                 "lang": lang,
                 "public_metrics": public_metrics,
                 "referenced_tweets": referenced_tweets,
+                "responses": self.search(conversation_id, None, None) # TODO - Ask Kylie about how to implement this here.
             }
-            return formatted_data
+
+            yield formatted_data
+
+        if data:
+            tweets = data[0]["data"] if "data" in data[0] else None
+            media = data[0]["includes"]["media"] if "media" in data[0]["includes"] else None
+            users = data[0]["includes"]["users"] if "users" in data[0]["includes"] else None
+
+            return list(get_tweet_data(tweets))
 
     def search(self, keyword, start_time: datetime, end_time: datetime):
-        """Gather data between provided date ranges using Twitter API function 
-        gen_request_parameters(); 
-        
+        """Gather data between provided date ranges using Twitter API function
+        gen_request_parameters();
+
         Sane defaults will be passed
 
         Parameters
@@ -150,6 +193,9 @@ class TwitterScraper(Scraper):
 
         query = gen_request_parameters(
             query=keyword,
+            expansions=EXPANSIONS,
+            user_fields=USER_FIELDS,
+            media_fields=MEDIA_FIELDS,
             granularity=None,
             start_time=start_time.strftime("%Y-%m-%d"),
             end_time=end_time.strftime("%Y-%m-%d"),
@@ -172,10 +218,19 @@ class TwitterScraper(Scraper):
             data = self.search(" OR ".join(self.keywords), start_date, end_date)
 
             # properly format data
-            new_dataset = pd.DataFrame(self.format_collected_data(data))
+            new_dataset = self.format_collected_data(data)
+            new_dataset = pd.DataFrame(new_dataset)
 
             # flush data to file (with date range in filename)
-            self.flush_posts(path.join(self.output_dir, FILENAME_CONVENTION.format(start_date, end_date)), new_dataset)
+            self.flush_posts(
+                path.join(
+                    self.output_dir,
+                    FILENAME_CONVENTION.format(
+                        start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+                    ),
+                ),
+                new_dataset,
+            )
 
 
 def main():
@@ -215,7 +270,6 @@ def main():
 
     args = parser.parse_args()
 
-    # TODO
     twitter_scraper = TwitterScraper(
         args.keywords_file,
         args.credentials,
