@@ -2,9 +2,7 @@ from searchtweets import load_credentials, gen_request_parameters, collect_resul
 import pprint
 
 search_args = load_credentials('twitter_keys.yaml', yaml_key='search_tweets_v2', env_overwrite=False)
-
 query = gen_request_parameters('internet OR food', results_per_call=10, granularity=None, tweet_fields='id,text,attachments,author_id,conversation_id,created_at,in_reply_to_user_id,lang,public_metrics,referenced_tweets', expansions='author_id,in_reply_to_user_id,attachments.media_keys', user_fields='id,name,username', media_fields='media_key,type,url,variants')
-
 results = collect_results(query, max_tweets=10, result_stream_args=search_args)
 
 tweets = results[0]['data'] if 'data' in results[0] else None
