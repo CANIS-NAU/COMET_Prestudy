@@ -10,7 +10,7 @@
         "name": "Bash-Debug (select script from list of sh files)",
         "cwd": "${workspaceFolder}",
         "program": "${command:SelectScriptName}",
-        "args": ["${workspaceFolder}/scripts/collection/keywords/clean_keywords.txt"]
+        "args": ["scripts/collection/keywords/testing_keywords.txt"]
     },
         {
             "name": "Python: Twitter Scraper",
