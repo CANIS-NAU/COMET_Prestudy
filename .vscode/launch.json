@@ -8,9 +8,9 @@
         "type": "bashdb",
         "request": "launch",
         "name": "Bash-Debug (select script from list of sh files)",
-        "cwd": "${workspaceFolder}",
+        "cwd": "${fileWorkspaceFolder}",
         "program": "${command:SelectScriptName}",
-        "args": ["scripts/collection/keywords/testing_keywords.txt"]
+        "args": ["scripts/collection/informal_scripts/"]
     },
         {
             "name": "Python: Twitter Scraper",
