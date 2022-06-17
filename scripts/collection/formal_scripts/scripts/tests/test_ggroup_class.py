@@ -4,10 +4,9 @@
 # ggroup_selenium_test.py tests, except that this will test
 # the same functionalities using the GoogleScraper class implementation
 
-from GoogleGroupsScraper import GoogleGroupsScraper, DriverType
-from os import path
-from pathlib import Path
-import os
+from scripts.MlabScraper import GoogleGroupsScraper, DriverType
+import pandas as pd
+
 # global variables for reuse
 canis_test_url = "https://www.canis-lab.com/"
 group_test_url = "https://groups.google.com/g/canis-google-group-test-group"
@@ -52,19 +51,14 @@ def test_mlab_group():
 
     # collect all post data points and save them to a file called (post_titles.txt)
     mlab_scraper.scrape()
-    mlab_scraper.close()
 
     # Array of post titles to compare against the 'flushed' values
-    collected_titles = []
-    for values in list(mlab_scraper.posts.values()):
-        for post in values:
-            collected_titles.append(post.title)
+    collected_titles = mlab_scraper.posts.loc[:, 'title'].tolist()
 
-    mlab_scraper.flush_posts('./post_titles_mlab.txt')
+    mlab_scraper.flush_posts('./post_titles_mlab.csv')
 
     # load lines from the created file into an array for comparison
-    with open("./post_titles_mlab.txt", 'r') as out_file:
-        file_lines = out_file.read().splitlines()
+    file_lines = pd.read_csv('./post_titles_mlab.csv').loc[:, "title"].tolist()
 
 
     # now, check through all posts collected in the file, and compare with the 
