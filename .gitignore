@@ -132,3 +132,6 @@ dmypy.json
 
 # for mac environments
 .DS_Store
+
+# vim swapfiles
+*.swp
