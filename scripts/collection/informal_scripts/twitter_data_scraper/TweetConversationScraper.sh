@@ -63,6 +63,8 @@ fi
 
 declare CONV_ID_ITER
 
+
+
 # for each csv file in the input directory
 for data_file in ${TWITTER_DATA_DIR}/*.csv; do
 
