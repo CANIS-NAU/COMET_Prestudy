@@ -144,7 +144,6 @@ main() {
             --combine-queries \
             --archive \
             --granularity day \
-            --max-results $PER_CALL_LIMIT \
             --limit "$TWEET_LIMIT" \
             --start-time "$START_DATE" \
             --end-time "$END_DATE" \

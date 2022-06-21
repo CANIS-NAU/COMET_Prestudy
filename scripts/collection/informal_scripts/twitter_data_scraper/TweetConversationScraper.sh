@@ -79,13 +79,18 @@ for data_file in ${TWITTER_DATA_DIR}/*.csv; do
 
     for element in ${CONV_ID_ITER}; do
         # Write respective conversation IDs to file
-        echo "${element}" >>${TEMP_ID_FOLDER}/${new_filename}
+        echo "${element}" >> ${TEMP_ID_FOLDER}/${new_filename}
     done
 
     # Now with all the conversation IDs extracted, enter them into twarc
 
     # TODO execute twarc search for the conversation_id and store the resulting conversation data in output directory
-    twarc2 conversations --archive --limit ${TWEET_LIMIT} --max-results=${PER_CALL_LIMIT} ${TEMP_ID_FOLDER}/${new_filename} ${OUTPUT_DIR}/${new_filename/.txt/.json}
+    twarc2 conversations \
+        --archive \
+        --limit ${TWEET_LIMIT} \
+        --max-results${PER_CALL_LIMIT} \
+        ${TEMP_ID_FOLDER}/${new_filename} \
+        ${OUTPUT_DIR}/${new_filename/.txt/.json}
 done
 
 # convert all json files to csv and delete remaining json
