@@ -1,11 +1,40 @@
 #!/usr/bin/env bash
 
-# Constant Values
+# ------------------------------------------------------------------
+# [Quinton Jasper] TweetArchiveScrape.sh
+
+#      This script will handle the scraping and organizing of
+#      Twitter data from the time period: START_DATE to DATE_NOW
+#      (ie. the current date upon script execution).
+#
+#      Each year increment will get its own dedicated CSV file,
+#      This will keep individual file-sizes from getting too large.
+#      
+#      This script will also prevent complete quota usage before
+#      all queries are sent. The academic research track of the
+#      Twitter API v2.0 allows for 10,000,000 tweets to be grabbed
+#      per month. 
+#
+#      This script will do the math to calculate how
+#      many tweets can be gathered for each year increment before
+#      hitting the tweet quota. 
+
+#      *** This script will utilize the 10,000,000 tweet quota in a single run.***
+#      *** Use wisely. ***
+# ------------------------------------------------------------------
+
+######## Constant Values ########
 START_DATE="2017-01-01" # date format: YYYY-mm-dd
 DATE_NOW=$(date +%Y-%m-%d)
+
 KEYWORDS_FILE=$1
-PER_CALL_LIMIT=10
-TWEET_LIMIT=2
+
+TOTAL_TWEET_QUOTA=10000000
+
+# Divide monthly quota amongst num years to scrape
+# ie. (DATE_NOW - START_DATE) / 10,000,000 (Academic Quota)
+YEAR_DIFF=$(expr $(date +%Y -d ${DATE_NOW}) - $(date +%Y -d ${START_DATE}))
+TWEET_LIMIT=$(expr ${TOTAL_TWEET_QUOTA} / ${YEAR_DIFF})
 
 
 FILENAME_SUFFIX="twitter_data"
@@ -14,6 +43,7 @@ CSV_DIR=$PWD/converted_csv
 
 TWARC_CONFIG="$HOME/.config/twarc/config"
 
+######## Functions ########
 function json_to_csv {
     for file in "$JSON_DIR"/*.json; do
         filename="$(basename "$file")"
@@ -63,6 +93,7 @@ function gen_one_yr_inc {
     echo "$NEW_DATE"
 }
 
+######## Entrypoint ########
 main() {
 
     if [[ "$KEYWORDS_FILE" == "--help" ]] || [[ "$KEYWORDS_FILE" == "-h" ]]; then
@@ -109,23 +140,23 @@ main() {
         fi
 
         # use twarc to grab historical tweets from 01/2017 to now
-        # TODO - Determine optimal settings for twarc
         twarc2 searches \
             --combine-queries \
             --archive \
             --granularity day \
-            --max-results $PER_CALL_LIMIT \
             --limit "$TWEET_LIMIT" \
             --start-time "$START_DATE" \
             --end-time "$END_DATE" \
             "$KEYWORDS_FILE" \
             "$(gen_file_name "$START_DATE" "$END_DATE")"
 
+        # increment start and end date by one year, or until end date == now
         START_DATE=$(gen_one_yr_inc "$START_DATE")
         END_DATE=$(gen_one_yr_inc "$END_DATE")
 
     done
 
+    # When all is done, convert all json files to csv in their own folder
     json_to_csv
 
     exit 0
