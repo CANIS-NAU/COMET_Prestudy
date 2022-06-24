@@ -11,7 +11,7 @@ from datetime import datetime as dt
 from dateutil.relativedelta import *
 from os.path import exists
 
-start_date = None
+start_year = None
 MONTHS = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
 
 def configure_driver(chromedriver: str):
@@ -75,7 +75,7 @@ def create_output_file(output_file: str):
     """
 
     # create pandas dataframe as a tsv file and create the file in the specified location given
-    dataframe = pd.DataFrame(columns = ['post_id', 'author', 'neighborhood', 'date', 'text', 'posted_in', 'media_list', 'num_of_comments', 'who_commented', 'comment_ids', 'num_of_reactions', 'reactions'])
+    dataframe = pd.DataFrame(columns = ['post_id', 'author', 'neighborhood', 'date', 'text', 'posted_in', 'media_list', 'num_of_comments', 'comment_ids', 'num_of_reactions', 'reactions'])
     dataframe.to_csv(output_file, sep='\t')
 
 def create_keyword_string(keywords_file: str):
@@ -124,170 +124,6 @@ def scroll_page():
             break
         last_height = new_height
 
-def get_date(date: str):
-    """Make sure that the post date is within date limits and
-    create the correct date format for the given date
-
-    Parameters
-    ----------
-    date : str
-        The post date given on the website
-
-    Returns
-    ----------
-    str
-        A string of the date in the correct format
-    
-    True
-        The True literal as a sign that the post should be removed from the list of posts
-    
-    None
-        Nothing as a sign that the post should be used or there is no correct format date
-    """
-
-    global start_date
-
-    # import re library
-    import re
-
-    # if the date is in minutes
-    if 'min ago' in date or 'min' in date:
-        difference = date.split(' ')[0]
-        difference = int(difference)
-        post_date = dt.now() - datetime.timedelta(minutes = difference)
-
-        # if the date is earlier than the given start date
-        if start_date != None:
-            if post_date < start_date:
-                return True
-
-        return str(post_date.date())
-    
-    #if the date is in hours
-    elif 'hr ago' in date or 'hr' in date:
-        difference = date.split(' ')[0]
-        difference = int(difference)
-        post_date = dt.now() - datetime.timedelta(hours = difference)
-
-        # if the date is earlier than the given start date
-        if start_date != None:
-            if post_date < start_date:
-                return True
-
-        return str(post_date.date())
-    
-    # if the date is days ago
-    elif 'days ago' in date or 'day ago' in date or 'day' in date:
-        difference = date.split(' ')[0]
-        difference = int(difference)
-        post_date = dt.today() - datetime.timedelta(days = difference)
-
-        # if the date is earlier than the given start date
-        if start_date != None:
-            if post_date < start_date:
-                return True
-
-        return str(post_date.date())
-
-    # if the date is weeks ago
-    elif 'weeks ago' in date:
-        difference = date.split(' ')[0]
-        difference = int(difference)
-        post_date = dt.today() + relativedelta(weeks=-difference)
-
-        # if the date is earlier than the given start date
-        if start_date != None:
-            if post_date < start_date:
-                return True
-
-        return str(post_date.date())
-
-    # if the date is an actual date, ex: '12 Jun' or '1 May 19'
-    else:
-
-        # if the date is one digit, ex: '16w'
-        if len(date.split(' ')) == 1:
-            date = re.split('(\d+)', date)
-
-            # if the date is in week form
-            if 'w' in date:
-                difference = date[1]
-                difference = int(difference)
-                post_date = dt.today() + relativedelta(weeks=-difference)
-
-                # if the date is earlier than the given start date
-                if start_date != None:
-                    if post_date < start_date:
-                        return True
-
-                return str(post_date.date())
-
-        # if the date can be split in two, ex: '16 Apr'
-        if len(date.split(' ')) == 2:
-            strings = list(MONTHS.keys())
-            nums = list(MONTHS.values())
-
-            # if the date month is later than the current month, ex: current month is May and date month is July
-            # the date is then last year, check to be sure it is in range
-            if strings.index(date.split(' ')[1]) > nums.index(dt.now().month):
-                current_year = dt.today().year
-                post_date = dt(current_year, MONTHS[date.split(' ')[1]], int(date.split(' ')[0])) + relativedelta(years=-1)
-                post_date = post_date.date()
-
-                # if the date is earlier than the given start date
-                if start_date != None:
-                    if post_date > start_date.date():
-                        return True
-
-                return str(post_date)
-
-            # if the month is current, make sure the date is not later than the current date
-            # the date is then last year, check to be sure it is in range
-            if strings.index(date.split(' ')[1]) == nums.index(dt.now().month):
-                post_day = date.split(' ')[0]
-
-                if int(post_day) > dt.now().day:
-                    current_year = dt.today().year
-                    post_date = dt(current_year, MONTHS[date.split(' ')[1]], int(date.split(' ')[0])) + relativedelta(years=-1)
-                    post_date = post_date.date()
-
-                    # if the date is earlier than the given start date
-                    if start_date != None:
-                        if post_date > start_date.date():
-                            return True
-
-                    return str(post_date)
-            
-            # otherwise, the date is in range
-            else:
-                current_year = dt.today().year
-                post_date = dt(current_year, MONTHS[date.split(' ')[1]], int(date.split(' ')[0]))
-                post_date = post_date.date()
-
-                return str(post_date)
-
-        # if the date can be split in 3, ex: '12 Jun 19' or '18 May 20'
-        # split the date correctly
-        if len(date.split(' ') == 3):
-            post_day = date.split(' ')[0]
-            post_month = date.split(' ')[1]
-            post_year = date.split(' ')[2]
-            
-            post_month = MONTHS[post_month]
-
-            post_year = '20' + post_year
-             
-            post_date = dt(int(post_year), post_month, int(post_day))
-
-            # if the date is earlier than the given start date
-            if start_date != None:
-                if post_date > start_date.date():
-                    return True
-
-            return str(post_date.date())
-    
-    return None
-
 def get_post_media(post: object):
     """Gather the media of the given post
 
@@ -327,6 +163,19 @@ def get_comment_ids():
     comment_ids = [str(post_id) + '_' + str(num) for num in range(1, comment_ids+1)]
     return comment_ids
 
+def scroll_reactions():
+    reaction_page = driver.find_elements(By.CSS_SELECTOR, 'div.css-pag41j')
+
+    if len(reaction_page) > 0:
+        last_height = driver.execute_script('return arguments[0].scrollHeight', reaction_page[0])
+        while True:
+            driver.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight)", reaction_page[0])
+            time.sleep(5)
+            new_height = driver.execute_script('return arguments[0].scrollHeight', reaction_page[0])
+            if new_height == last_height:
+                break
+            last_height = new_height
+
 def get_reactions(post : object, type : str):
     """Gather the reactions of the post
 
@@ -359,6 +208,8 @@ def get_reactions(post : object, type : str):
     if len(reactions_button) > 0:
         driver.execute_script("arguments[0].click();", reactions_button[0])
         time.sleep(random.randint(2, 5))
+
+        scroll_reactions()
 
         who_reacted = driver.find_elements(By.CSS_SELECTOR, 'h2.css-up964u')
         who_reacted = [name.text for name in who_reacted]
@@ -433,11 +284,10 @@ def get_comment_data(output_file):
             'post_id' : str(post_id) + '_' + str(comment_id),
             'author' : comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')) > 0 else None,
             'neighborhood' : comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')) > 0 else None,
-            'date' : get_date(comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')[0].text) if len(comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')) > 0 else None,
+            'date' : comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')) > 0 else None,
             'text' : comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None,
             'posted in' : main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
             'media list' : get_post_media(comment) if get_post_media(comment) != [] else None,
-            'who commented' : list(set([name.text for name in parent_element.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')[1:]])) if len(parent_element.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')) > 1 else None,
             'comment ids' : [str(post_id) + '_' + str(num + comment_id) for num in range(1, len(parent_element.find_elements(By.CSS_SELECTOR, 'div.js-media-comment')))] if len(parent_element.find_elements(By.CSS_SELECTOR, 'div.js-media-comment')) > 1 else None,
             'reactions' : get_reactions(comment, 'comment')
         }]
@@ -467,11 +317,10 @@ def get_main_post_data(output_file):
         'post_id' : post_id,
         'author' : main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')) > 0 else None,
         'neighborhood' : main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None, 
-        'date' : get_date(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[1].text) if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None,
+        'date' : main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[1].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None,
         'text' : main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None,
         'posted in': main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
         'media list' : get_post_media(main_post) if get_post_media(main_post) != [] else None,
-        'who commented' : list(set([name.text for name in driver.find_elements(By.CSS_SELECTOR, 'div.css-66amwq')])) if len(driver.find_elements(By.CSS_SELECTOR, 'div.css-66amwq')) > 0 else None,
         'comment ids' : get_comment_ids() if get_comment_ids() != [] else None,
         'reactions' : get_reactions(main_post, 'post')
     }]
@@ -520,7 +369,7 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
     """
 
     # declare global variables
-    global driver, post_id, start_date
+    global driver, post_id, start_year
 
     # configure the driver
     driver = configure_driver(chromedriver)
@@ -544,19 +393,7 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
     # get the posts shown
     posts = driver.find_elements(By.CSS_SELECTOR, 'a._2pCkWHax.css-1q9s7yp')
 
-    # if there is a start date
-    # check the dates of each post
-    # if the post is earlier than the given start date
-    # remove it from the posts list
-    if start_date != None:
-        print(start_date)
-        start_date = dt.strptime(start_date, '%m/%Y')
-        print(start_date)
-
-        for post in posts:
-            date = [date.text.split('·')[1] for date in post.find_elements(By.CSS_SELECTOR, 'div.css-77j1dk') if '·' in date.text][0].strip()
-            if get_date(date):
-                posts.remove(post) 
+    # TODO: make sure the post dates are within the correct time
 
     # if there is a limit
     # only get the limit number of posts
@@ -588,6 +425,9 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
         driver.get(href)
         time.sleep(5)
 
+        if len(driver.find_elements(By.CSS_SELECTOR, 'div.js-media-post.clearfix.post.has-tophat')) > 0:
+            continue
+
         # open each see more link
         open_see_more_links()
 
@@ -599,10 +439,13 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
 
         # increment to the next post id
         post_id += 1
+    
+    print('Done!')
+    driver.quit()
 
 def main():
     # delcare global variable
-    global start_date
+    global start_year
 
     # import argparse library
     import argparse
@@ -622,9 +465,9 @@ def main():
     )
 
     parser.add_argument(
-        '-sd',
-        '--start_date',
-        help='Furthest date to go back to for collection; Format: MM/YYYY; None == Retrieve available posts no matter the date',
+        '-sy',
+        '--start_year',
+        help='Furthest date to go back to for collection; Format: YYYY; None == Retrieve available posts no matter the date',
         type=str,
         default=None
     )
@@ -672,7 +515,7 @@ def main():
     args = parser.parse_args()
 
     # assign the start date given
-    start_date = args.start_date
+    start_year = args.start_year
 
     # start the nextdoor scraper
     NextdoorScraper(
