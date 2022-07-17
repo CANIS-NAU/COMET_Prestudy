@@ -156,8 +156,8 @@ main() {
 
     done
 
-    # When all is done, convert all json files to csv in their own folder
-    json_to_csv
+    # When all is done, convert all json files to csv in their own folder (Removed, reccommended to do this manually)
+    #json_to_csv
 
     exit 0
 }
