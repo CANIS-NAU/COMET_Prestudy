@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-from re import X
-import pandas as pd
-import sys, pathlib, argparse
+import argparse
+import pathlib
+import sys
 from ast import literal_eval
-from pprint import pprint
 
+import pandas as pd
+
+"""Script that takes a single csv file and returns the collected hashtag counts as a csv.
+Output is sent to stdout for easy piping into files.
+"""
 def extract_hashtags(file: str):
-    data = pd.read_csv(file, low_memory=False)['entities.hashtags'].dropna('index')
+    data = pd.read_csv(file, low_memory=False, encoding='utf-8', encoding_errors=None)['entities.hashtags'].dropna('index')
     data = [literal_eval(line) for line in data]
     for post in data:
         for dictionary in post:
