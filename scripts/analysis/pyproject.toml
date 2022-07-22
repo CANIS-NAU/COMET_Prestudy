@@ -16,6 +16,7 @@ pyLDAvis = "^3.3.1"
 vaderSentiment = "^3.3.2"
 
 [tool.poetry.dev-dependencies]
+black = "^22.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

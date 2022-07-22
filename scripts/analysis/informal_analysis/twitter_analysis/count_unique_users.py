@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import pandas as pd
-from pprint import pprint
 import pathlib
 import argparse
 import sys
