@@ -13,6 +13,7 @@ dependencies:
   - blas=1.0=mkl
   - bleach=4.1.0=pyhd3eb1b0_0
   - bottleneck=1.3.5=py310ha9d4c09_0
+  - brotli=1.0.9=he6710b0_2
   - brotlipy=0.7.0=py310h7f8727e_1002
   - bzip2=1.0.8=h7b6447c_0
   - ca-certificates=2022.07.19=h06a4308_0
@@ -23,6 +24,7 @@ dependencies:
   - click=8.0.4=py310h06a4308_0
   - colorama=0.4.5=py310h06a4308_0
   - cryptography=37.0.1=py310h9ce1e76_0
+  - cycler=0.11.0=pyhd3eb1b0_0
   - cymem=2.0.6=py310h295c915_0
   - cython=0.29.28=py310h295c915_0
   - cython-blis=0.7.7=py310h9102076_0
@@ -34,8 +36,10 @@ dependencies:
   - executing=0.8.3=pyhd3eb1b0_0
   - expat=2.4.4=h295c915_0
   - fontconfig=2.13.1=h6c09931_0
+  - fonttools=4.25.0=pyhd3eb1b0_0
   - freetype=2.11.0=h70c0345_0
   - gensim=4.2.0=py310h6a678d5_0
+  - giflib=5.2.1=h7b6447c_0
   - glib=2.69.1=h4ff587b_1
   - gst-plugins-base=1.14.0=h8213a91_2
   - gstreamer=1.14.0=h28cd5cc_2
@@ -57,7 +61,9 @@ dependencies:
   - jupyter_core=4.10.0=py310h06a4308_0
   - jupyterlab_pygments=0.1.2=py_0
   - jupyterlab_widgets=1.0.0=pyhd3eb1b0_1
+  - kiwisolver=1.4.2=py310h295c915_0
   - langcodes=3.3.0=pyhd3eb1b0_0
+  - lcms2=2.12=h3be6417_0
   - ld_impl_linux-64=2.38=h1181459_1
   - libffi=3.3=he6710b0_2
   - libgcc-ng=11.2.0=h1234567_1
@@ -67,16 +73,23 @@ dependencies:
   - libpng=1.6.37=hbc83047_0
   - libsodium=1.0.18=h7b6447c_0
   - libstdcxx-ng=11.2.0=h1234567_1
+  - libtiff=4.2.0=h2818925_1
   - libuuid=1.0.3=h7f8727e_2
+  - libwebp=1.2.2=h55f646e_0
+  - libwebp-base=1.2.2=h7f8727e_0
   - libxcb=1.15=h7f8727e_0
   - libxml2=2.9.14=h74e7548_0
+  - lz4-c=1.9.3=h295c915_1
   - markupsafe=2.1.1=py310h7f8727e_0
+  - matplotlib=3.5.1=py310h06a4308_1
+  - matplotlib-base=3.5.1=py310ha18d171_1
   - matplotlib-inline=0.1.2=pyhd3eb1b0_2
   - mistune=0.8.4=py310h7f8727e_1000
   - mkl=2021.4.0=h06a4308_640
   - mkl-service=2.4.0=py310h7f8727e_0
   - mkl_fft=1.3.1=py310hd6ae3a3_0
   - mkl_random=1.2.2=py310h00e6091_0
+  - munkres=1.1.4=py_0
   - murmurhash=1.0.7=py310h295c915_0
   - nbclient=0.5.13=py310h06a4308_0
   - nbconvert=6.4.4=py310h06a4308_0
@@ -97,6 +110,7 @@ dependencies:
   - pcre=8.45=h295c915_0
   - pexpect=4.8.0=pyhd3eb1b0_3
   - pickleshare=0.7.5=pyhd3eb1b0_1003
+  - pillow=9.2.0=py310hace64e9_1
   - pip=22.1.2=py310h06a4308_0
   - preshed=3.0.6=py310h295c915_0
   - prometheus_client=0.13.1=pyhd3eb1b0_0
@@ -125,6 +139,7 @@ dependencies:
   - requests=2.28.1=py310h06a4308_0
   - scikit-learn=1.1.1=py310h6a678d5_0
   - scipy=1.7.3=py310hfa59a62_0
+  - seaborn=0.11.2=pyhd3eb1b0_0
   - send2trash=1.8.0=pyhd3eb1b0_1
   - setuptools=61.2.0=py310h06a4308_0
   - shellingham=1.3.1=pyhd3eb1b0_0
@@ -159,6 +174,7 @@ dependencies:
   - xz=5.2.5=h7f8727e_1
   - zeromq=4.3.4=h2531618_0
   - zlib=1.2.12=h7f8727e_2
+  - zstd=1.5.2=ha4553b6_0
   - pip:
     - funcy==1.17
     - future==0.18.2
