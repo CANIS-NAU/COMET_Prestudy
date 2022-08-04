@@ -6,35 +6,40 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-import time, requests, random, pandas as pd, datetime, calendar
+import time
+import requests
+import random
+import pandas as pd
+import datetime
+import calendar
+import re
+import pickle
+import os
 from datetime import datetime as dt
 from dateutil.relativedelta import *
 from os.path import exists
 
 start_year = None
-MONTHS = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+MONTHS = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+          'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
 
-def configure_driver(chromedriver: str):
-    """Configure the chromedriver
+driver = None
 
-    Parameters
-    ----------
-    chromedriver : str
-        File path of the chromedriver in string form
-
-    Returns
-    ----------
-    webdriver
-        The configured webdriver
-    """
+def configure_driver():
+    global driver
 
     # configure webdriver
     options = Options()
+    options.add_argument('--disable-notifications')
     options.page_load_strategy = 'normal'
     options.add_argument('--disable-site-isolation-trials')
 
-    # return webdriver
-    return webdriver.Chrome(options=options, executable_path=chromedriver)
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+
+    options = Options()
+    driver = webdriver.Chrome(options=options, service=Service(ChromeDriverManager().install()))
+
 
 def login(username: str, password: str):
     """Log in to Nextdoor
@@ -57,13 +62,15 @@ def login(username: str, password: str):
     username_input.send_keys(username)
 
     # input password
-    password_input = driver.find_element(By.CSS_SELECTOR, 'input.css-62beto.password_text_input')
+    password_input = driver.find_element(
+        By.CSS_SELECTOR, 'input.css-62beto.password_text_input')
     password_input.send_keys(password)
 
     # click login button
     login_button = driver.find_element(By.CSS_SELECTOR, 'button.css-1hpv9ll')
     driver.execute_script("arguments[0].click();", login_button)
     time.sleep(random.randint(2, 5))
+
 
 def create_output_file(output_file: str):
     """Create the tsv file that will be used to store data
@@ -75,8 +82,10 @@ def create_output_file(output_file: str):
     """
 
     # create pandas dataframe as a tsv file and create the file in the specified location given
-    dataframe = pd.DataFrame(columns = ['post_id', 'author', 'neighborhood', 'date', 'text', 'posted_in', 'media_list', 'num_of_comments', 'comment_ids', 'num_of_reactions', 'reactions'])
+    dataframe = pd.DataFrame(columns=['author', 'neighborhood', 'date', 'text', 'category',
+                             'media list', 'num comments', 'num reactions', 'reactions'])
     dataframe.to_csv(output_file, sep='\t')
+
 
 def create_keyword_string(keywords_file: str):
     """Create the string that will be used to search for the keywords
@@ -107,6 +116,7 @@ def create_keyword_string(keywords_file: str):
     # return the keyword string
     return keyword_string
 
+
 def scroll_page():
     """Scroll through the results page until all posts are available
     """
@@ -116,13 +126,13 @@ def scroll_page():
 
     # scroll while the end of the page hasn't been reached
     while True:
-        break
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
         time.sleep(5)
         new_height = driver.execute_script('return document.body.scrollHeight')
         if new_height == last_height:
             break
         last_height = new_height
+
 
 def get_post_media(post: object):
     """Gather the media of the given post
@@ -149,41 +159,32 @@ def get_post_media(post: object):
     # return the media list
     return media_list
 
-def get_comment_ids():
-    """Get the comment ids of the comments of the post
-
-    Returns
-    ----------
-    comment_ids : list
-        A list of comment ids from the post
-    """
-
-    # get the number of comments and create the comment ids
-    comment_ids = len(driver.find_elements(By.CSS_SELECTOR, 'div.js-media-comment'))
-    comment_ids = [str(post_id) + '_' + str(num) for num in range(1, comment_ids+1)]
-    return comment_ids
 
 def scroll_reactions():
-    reaction_page = driver.find_elements(By.CSS_SELECTOR, 'div.css-pag41j')
+    reaction_page = driver.find_elements(By.CSS_SELECTOR, 'div.css-zulrf6')
 
     if len(reaction_page) > 0:
-        last_height = driver.execute_script('return arguments[0].scrollHeight', reaction_page[0])
+        last_height = driver.execute_script(
+            'return arguments[0].scrollHeight', reaction_page[0])
         while True:
-            driver.execute_script("arguments[0].scrollTo(0, arguments[0].scrollHeight)", reaction_page[0])
+            driver.execute_script(
+                "arguments[0].scrollTo(0, arguments[0].scrollHeight)", reaction_page[0])
             time.sleep(5)
-            new_height = driver.execute_script('return arguments[0].scrollHeight', reaction_page[0])
+            new_height = driver.execute_script(
+                'return arguments[0].scrollHeight', reaction_page[0])
             if new_height == last_height:
                 break
             last_height = new_height
 
-def get_reactions(post : object, type : str):
+
+def get_reactions(post: object, type: str):
     """Gather the reactions of the post
 
     Parameters
     ----------
     post : WebElement
         The post WebElement to look into
-    
+
     type : str
         The type of post being looked at, ex: 'comment' or 'post'
 
@@ -191,18 +192,19 @@ def get_reactions(post : object, type : str):
     ----------
     reactions : dict[str, list]
         A dictionary of the possible reactions with a list of users that made that reaction
-    
+
     None
         Nothing if there were no reactions
     """
 
     # get the correct reactions button based on whether the WebElement is a post or comment
     if type == 'post':
-        reactions_button = post.find_elements(By.CSS_SELECTOR, 'button._1p1i18kz.post-action-count-container-reaction-count.post-action-space-if-not-last-child._15-DWJ4U.button-text')
+        reactions_button = post.find_elements(
+            By.CSS_SELECTOR, 'button._1p1i18kz.post-action-count-container-reaction-count.post-action-space-if-not-last-child._15-DWJ4U.button-text')
     elif type == 'comment':
-        reactions_button = post.find_elements(By.CSS_SELECTOR, 'button._1p1i18kz._15-DWJ4U.button-text')
+        reactions_button = post.find_elements(
+            By.CSS_SELECTOR, 'button._1p1i18kz._15-DWJ4U.button-text')
 
-    
     # if a reactions button does exist
     # click on the button and gather each reaction and who did that reaction
     if len(reactions_button) > 0:
@@ -215,10 +217,13 @@ def get_reactions(post : object, type : str):
         who_reacted = [name.text for name in who_reacted]
 
         reaction_divs = driver.find_elements(By.CSS_SELECTOR, 'div.css-clcwj9')
-        reactions = {'Like': [], 'Thank': [], 'Agree': [], 'Haha': [], 'Wow': [], 'Sad': []}
+        reactions = {'Like': [], 'Thank': [],
+                     'Agree': [], 'Haha': [], 'Wow': [], 'Sad': []}
         for reaction in reaction_divs:
-            reaction_img = reaction.find_elements(By.CSS_SELECTOR, 'img')[1].get_attribute('alt')
-            reaction_person = reaction.find_element(By.CSS_SELECTOR, 'h2.css-up964u').text
+            reaction_img = reaction.find_elements(By.CSS_SELECTOR, 'img')[
+                1].get_attribute('alt')
+            reaction_person = reaction.find_element(
+                By.CSS_SELECTOR, 'h2.css-up964u').text
 
             if reaction_img == 'Like':
                 reactions['Like'].append(reaction_person)
@@ -231,10 +236,11 @@ def get_reactions(post : object, type : str):
             if reaction_img == 'Wow':
                 reactions['Wow'].append(reaction_person)
             if reaction_img == 'Sad':
-                reactions['Sad'].append(reaction_person) 
+                reactions['Sad'].append(reaction_person)
 
         # exit the reactions container
-        exit_button = driver.find_element(By.CSS_SELECTOR, 'div.css-5qiylr').find_element(By.CSS_SELECTOR, 'div.css-dkr4zn')
+        exit_button = driver.find_element(
+            By.CSS_SELECTOR, 'div.css-5qiylr').find_element(By.CSS_SELECTOR, 'div.css-dkr4zn')
         driver.execute_script("arguments[0].click();", exit_button)
         time.sleep(random.randint(2, 5))
 
@@ -245,24 +251,25 @@ def get_reactions(post : object, type : str):
     else:
 
         # return nothing, since there are no reactions
-        return None  
+        return None
 
-def upload_data(data : list, output_file: str):
+
+def upload_data(data: list, output_file: str):
     """Add the row of data to the given output file
 
     Parameters
     ----------
     data : list
         Dictionary of data
-    
+
     output_file : str
         The output file given in the arguments
     """
-
     df = pd.DataFrame(data)
-    df.to_csv(output_file, mode = 'a', sep='\t', header=False)
+    df.to_csv(output_file, mode='a', sep='\t', header=False)
 
-def get_comment_data(output_file):
+
+def get_comment_data():
     """Gathers the data of each comment of a post
 
     Parameters
@@ -274,28 +281,24 @@ def get_comment_data(output_file):
     # get the comments of the post
     comments = driver.find_elements(By.CSS_SELECTOR, 'div.js-media-comment')
 
-    # count the comments
-    comment_id = 1
+    data = []
 
     # loop through each comment and gather its data
     for comment in comments:
-        parent_element = comment.find_element(By.XPATH, '..')
-        data = [{
-            'post_id' : str(post_id) + '_' + str(comment_id),
-            'author' : comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')) > 0 else None,
-            'neighborhood' : comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')) > 0 else None,
-            'date' : comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')) > 0 else None,
-            'text' : comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None,
-            'posted in' : main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
-            'media list' : get_post_media(comment) if get_post_media(comment) != [] else None,
-            'comment ids' : [str(post_id) + '_' + str(num + comment_id) for num in range(1, len(parent_element.find_elements(By.CSS_SELECTOR, 'div.js-media-comment')))] if len(parent_element.find_elements(By.CSS_SELECTOR, 'div.js-media-comment')) > 1 else None,
-            'reactions' : get_reactions(comment, 'comment')
-        }]
 
-        # increment comment id
-        comment_id += 1
+        data.append({
+            'author': comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.comment-detail-author-name')) > 0 else None,
+            'neighborhood': comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'a.PH4qbR1K')) > 0 else None,
+            'date': comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.css-ra9tcg')) > 0 else None,
+            'text': comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(comment.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None,
+            'posted in': main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
+            'media list': get_post_media(comment) if get_post_media(comment) != [] else None,
+            'comments': None,
+            'reactions': get_reactions(comment, 'comment')
+        })
 
-        upload_data(data, output_file)
+    return data
+
 
 def get_main_post_data(output_file):
     """Gathers the data of each comment of a post
@@ -310,29 +313,41 @@ def get_main_post_data(output_file):
     global main_post
 
     # get the main post
-    main_post = driver.find_element(By.CSS_SELECTOR, 'div.js-media-post.clearfix.post')
+    main_post = driver.find_element(
+        By.CSS_SELECTOR, 'div.js-media-post.clearfix.post')
 
-    # gather the data of the main post
-    data = [{
-        'post_id' : post_id,
-        'author' : main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')) > 0 else None,
-        'neighborhood' : main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None, 
-        'date' : main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[1].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None,
-        'text' : main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None,
-        'posted in': main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
-        'media list' : get_post_media(main_post) if get_post_media(main_post) != [] else None,
-        'comment ids' : get_comment_ids() if get_comment_ids() != [] else None,
-        'reactions' : get_reactions(main_post, 'post')
-    }]
+    text = main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'span.Linkify')) > 0 else None
 
-    upload_data(data, output_file)
+    if text:
+
+        for keyword in keyword_list:
+
+            if keyword.lower() in text.lower():
+
+                # gather the data of the main post
+                data = [{
+                    'author': main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a._1QrCPIoo._2nXsqARR')) > 0 else None,
+                    'neighborhood': main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None,
+                    'date': main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')[1].text if len(main_post.find_elements(By.CSS_SELECTOR, 'a.post-byline-redesign')) > 0 else None,
+                    'text': text,
+                    'posted in': main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')[0].text if len(main_post.find_elements(By.CSS_SELECTOR, 'div.css-m9gd8r')) > 0 else None,
+                    'media list': get_post_media(main_post) if get_post_media(main_post) != [] else None,
+                    'comments': get_comment_data(),
+                    'reactions': get_reactions(main_post, 'post')
+                }]
+
+                upload_data(data, output_file)
+
+                break
+
 
 def open_see_more_links():
     """Open all of the 'see more' links on the page
     """
 
     # find all of the see more buttons
-    see_more_buttons = driver.find_elements(By.CSS_SELECTOR, 'button.see-previous-comments-button-paged._1eW-tOzA')
+    see_more_buttons = driver.find_elements(
+        By.CSS_SELECTOR, 'button.see-previous-comments-button-paged._1eW-tOzA')
 
     # while see more buttons exist
     while len(see_more_buttons) > 0:
@@ -342,22 +357,102 @@ def open_see_more_links():
         time.sleep(random.randint(2, 5))
 
         # check for more
-        see_more_buttons = driver.find_elements(By.CSS_SELECTOR, 'button.see-previous-comments-button-paged._1eW-tOzA')
+        see_more_buttons = driver.find_elements(
+            By.CSS_SELECTOR, 'button.see-previous-comments-button-paged._1eW-tOzA')
 
-def NextdoorScraper(limit, username, password, keywords_file, output_file, chromedriver):
+
+def check_year(post: object, start_year: str):
+
+    post_top = driver.find_elements(By.CSS_SELECTOR, 'div.css-1msysi4')
+
+    if len(post_top) > 0:
+
+        post_top = post_top[0]
+
+        neighborhood_date_elements = post_top.find_elements(
+            By.CSS_SELECTOR, 'div.css-1l73x44')
+
+        if len(neighborhood_date_elements) > 0:
+
+            neighborhood_date_element = neighborhood_date_elements[0]
+
+            if '·' not in neighborhood_date_element.text:
+
+                return False
+
+            date = neighborhood_date_element.text.split('·')[1]
+            date = date.strip()
+
+            date = re.split('(\d+)', date)
+            date = [element.strip() for element in date if element != '']
+
+            if len(date) == 2:
+
+                year = dt.today().year
+                month = dt.today().month
+                day = dt.today().day
+
+                months_strings = list(MONTHS.keys())
+                months_nums = list(MONTHS.values())
+
+                date_day = date[0]
+                date_month = date[1]
+
+                if date_month in months_strings:
+                    date_month_num = months_nums[months_strings.index(
+                        date_month)]
+
+                    if date_month_num > month:
+
+                        post_year = year - 1
+
+                        if int(post_year) >= int(start_year):
+
+                            return True
+
+                    else:
+
+                        return True
+
+            elif len(date) == 3:
+
+                date_year = '20' + date[2]
+                date = int(date_year)
+
+                if int(date_year) >= int(start_year):
+
+                    return True
+
+    return False
+
+
+def create_keyword_list(keywords_file):
+
+    file = open(keywords_file, 'r')
+    keywords = []
+
+    for keyword in file:
+
+        keyword = keyword.replace('\n', '')
+        keywords.append(keyword)
+
+    return keywords
+
+
+def NextdoorScraper(limit, username, password, keywords_file, output_file):
     """Scrape Nextdoor using the given keywords and produce a tsv file with the data found
 
     Parameters
     ----------
     limit : int
         The number of posts to collect, as long as there are enough available
-    
+
     username : str
         Username that will be used for the email/phone number input
 
     password : str
         Password that will be used for the password option
-        
+
     keywords_file : str
         The file that holds all keywords to be searched in Nextdoor; Format: 'Internet/nWifi/nSpeed'
 
@@ -369,16 +464,36 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
     """
 
     # declare global variables
-    global driver, post_id, start_year
+    global driver, start_year, keyword_list
 
-    # configure the driver
-    driver = configure_driver(chromedriver)
+    if os.path.exists('oldposts.dat'):
+
+        print('\n*****Old posts that did not have data gathered have been found.*****')
+        print('\n*****Would you like to use them?*****')
+
+        answer = input('Y (yes) or N (no): ')
+
+        if answer.lower() == 'y':
+
+            print('\n*****Proceeding per usual.*****')
+
+        elif answer.lower() == 'n':
+
+            os.remove('oldposts.dat')
+            print('\n*****Proceeding per usual.*****')
+
+        else:
+
+            print('\n*****Your response was not applicable. Proceeding per usual.*****')
 
     # create the output file
     create_output_file(output_file)
 
     # create the keyword string
     keyword_string = create_keyword_string(keywords_file)
+    keyword_list = create_keyword_list(keywords_file)
+
+    configure_driver()
 
     # login to nextdoor
     login(username, password)
@@ -387,61 +502,80 @@ def NextdoorScraper(limit, username, password, keywords_file, output_file, chrom
     driver.get('https://nextdoor.com/search/posts/?ccid=7E25E89B-7923-4364-A11B-20E127E181E1&navigationScreen=FEED&ssid=BC6802A2-6432-4887-884E-789810B2F4E2&query=' + keyword_string)
     time.sleep(5)
 
-    # scroll through the entire page
-    scroll_page()
+    if os.path.exists('oldposts.dat'):
 
-    # get the posts shown
-    posts = driver.find_elements(By.CSS_SELECTOR, 'a._2pCkWHax.css-1q9s7yp')
+        hrefs = pickle.load(open('oldposts.dat', 'rb'))
 
-    # TODO: make sure the post dates are within the correct time
+        print('\n*****There are', len(hrefs),
+              'posts to collect data from.*****')
 
-    # if there is a limit
-    # only get the limit number of posts
-    if limit != None:
-        if limit < len(posts):
-            posts = posts[0:limit]
+    else:
 
-    # if there are no posts
-    # let the user know and quit
-    if len(posts) == 0:
-        print('No posts were found with the arguments given.')
-        quit()
+        # scroll through the entire page
+        scroll_page()
 
-    # start a variable of hrefs
-    hrefs = []
+        # get the posts shown
+        posts = driver.find_elements(
+            By.CSS_SELECTOR, 'a._2pCkWHax.css-1q9s7yp')
 
-    # loop through each post and get their hrefs
-    for post in posts:
-        href = post.get_attribute('href')
-        hrefs.append(href)
+        for post in posts:
 
-    # start the post id counting
-    post_id = 1
+            if not check_year(post, start_year):
+
+                posts.remove(post)
+
+        # if there are no posts
+        # let the user know and quit
+        if len(posts) == 0:
+            print('No posts were found with the arguments given.')
+            quit()
+
+        # if there is a limit
+        # only get the limit number of posts
+        if limit != None:
+            if limit < len(posts):
+                posts = posts[0:limit]
+
+        hrefs = []
+
+        # loop through each post and get their hrefs
+        for post in posts:
+            href = post.get_attribute('href')
+            hrefs.append(href)
+
+        print('\n*****There are', len(hrefs),
+              'posts to collect data from.*****')
+
+        pickle.dump(hrefs, open('oldposts.dat', 'wb'))
+
 
     # loop through each href
-    for href in hrefs:
+    for href in list(hrefs):
+        try:
+            # go to the href page
+            driver.get(href)
+            time.sleep(5)
 
-        # go to the href page
-        driver.get(href)
-        time.sleep(5)
+            if len(driver.find_elements(By.CSS_SELECTOR, 'div.js-media-post.clearfix.post.has-tophat')):
+                hrefs.remove(href)
+                continue
 
-        if len(driver.find_elements(By.CSS_SELECTOR, 'div.js-media-post.clearfix.post.has-tophat')) > 0:
+            # open each see more link
+            open_see_more_links()
+
+            # get the post data
+            get_main_post_data(output_file)
+
+            hrefs.remove(href)
+
+            pickle.dump(hrefs, open('oldposts.dat', 'wb'))
+
+        except:
             continue
 
-        # open each see more link
-        open_see_more_links()
-
-        # get the main post data
-        get_main_post_data(output_file)
-
-        # get the posts comment data
-        get_comment_data(output_file)
-
-        # increment to the next post id
-        post_id += 1
-    
     print('Done!')
     driver.quit()
+
 
 def main():
     # delcare global variable
@@ -453,7 +587,7 @@ def main():
     # start the parser object
     parser = argparse.ArgumentParser(
         description='Scraper for scraping Nextdoor posts'
-        )
+    )
 
     # add arguments
     parser.add_argument(
@@ -504,14 +638,6 @@ def main():
         required=True
     )
 
-    parser.add_argument(
-        '-d',
-        '--chromedriver',
-        help='File path where chromedriver is stored',
-        type=str,
-        required=True
-    )
-
     args = parser.parse_args()
 
     # assign the start date given
@@ -519,13 +645,13 @@ def main():
 
     # start the nextdoor scraper
     NextdoorScraper(
-        args.limit, 
-        args.username, 
-        args.password, 
-        args.keywords_file, 
-        args.output_file,
-        args.chromedriver
-        )
+        args.limit,
+        args.username,
+        args.password,
+        args.keywords_file,
+        args.output_file
+    )
+
 
 if __name__ == '__main__':
     main()

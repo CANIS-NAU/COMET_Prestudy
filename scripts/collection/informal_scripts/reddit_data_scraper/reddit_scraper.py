@@ -84,6 +84,8 @@ def update_output(data: list, date: str):
         dataframe = pd.DataFrame(columns=['post_id', 'subreddit', 'author', 'date', 'title', 'text',
                              'media', 'comment ids', 'url', 'upvotes', 'downvotes', 'score', '# comments'])
         dataframe.to_csv(output_file, sep='\t')
+        df = pd.DataFrame(data)
+        df.to_csv(output_file, mode = 'a', sep = '\t', header = False)
 
 def get_reply_data(comment: object, comment_id: str):
     """Retrieves the reply data of the provided comment
@@ -252,7 +254,7 @@ def get_posts(ts_after: int, ts_before: int, query: str) -> list:
         q = query,
         filter = ['id'],
         sort = 'asc',
-        limit = 5
+        limit = 100
     )
 
     # return result list

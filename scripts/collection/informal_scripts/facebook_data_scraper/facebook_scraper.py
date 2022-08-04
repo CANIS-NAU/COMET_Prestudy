@@ -1,41 +1,32 @@
-from logging import exception
-from pydoc import classname
-from debugpy import configure
 from jmespath import search
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+import csv
 import time
 import random
 import pandas as pd
+import pickle
+import os
+import string
 from dateutil.relativedelta import *
+from datetime import date
 from os.path import exists
 from selenium.webdriver.support.expected_conditions import *
 
 FACEBOOK_YEARS = {'2022': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAyMlxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAyMi0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDIyXFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAyMi0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMjItMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMjItMTItMzFcXFwifVwifSJ9', '2021': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAyMVxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAyMS0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDIxXFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAyMS0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMjEtMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMjEtMTItMzFcXFwifVwifSJ9', '2020': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAyMFxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAyMC0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDIwXFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAyMC0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMjAtMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMjAtMTItMzFcXFwifVwifSJ9',
                   '2019': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAxOVxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAxOS0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDE5XFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAxOS0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMTktMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMTktMTItMzFcXFwifVwifSJ9', '2018': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAxOFxcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAxOC0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDE4XFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAxOC0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMTgtMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMTgtMTItMzFcXFwifVwifSJ9', '2017': '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9IiwicnBfY3JlYXRpb25fdGltZTowIjoie1wibmFtZVwiOlwiY3JlYXRpb25fdGltZVwiLFwiYXJnc1wiOlwie1xcXCJzdGFydF95ZWFyXFxcIjpcXFwiMjAxN1xcXCIsXFxcInN0YXJ0X21vbnRoXFxcIjpcXFwiMjAxNy0xXFxcIixcXFwiZW5kX3llYXJcXFwiOlxcXCIyMDE3XFxcIixcXFwiZW5kX21vbnRoXFxcIjpcXFwiMjAxNy0xMlxcXCIsXFxcInN0YXJ0X2RheVxcXCI6XFxcIjIwMTctMS0xXFxcIixcXFwiZW5kX2RheVxcXCI6XFxcIjIwMTctMTItMzFcXFwifVwifSJ9'}
-REACTIONS = {'Like': 'https://scontent.xx.fbcdn.net/m1/v/t6/An8TxrncfS4U_evP89c2GTGoBe2r0S9YacO1JWgXsSujyi44y6BPf9kkfnteC4B3wzEXsYS1dwFIG3UcC1c_CnQTTPxJ2zIXeAxTrhL8YV0Sp8quSZo.png?ccb=10-5&oh=00_AT_ZgwNdTjXD_7K6-RzczJMNi-f04kCS-omvqOyrJVoLzg&oe=62B7DB16&_nc_sid=55e238', 'Love': 'https://scontent.xx.fbcdn.net/m1/v/t6/An_gITNN0Ds6xnioTKduC3iqXXKmHcF0TaMvC1o32T--llsYDRmAjtiWFZ4R0stgYTwjHPojz-hShHPtB7jPz6xck8JN3Tg0UaA0OqYOiezH8xJvjrc.png?ccb=10-5&oh=00_AT-8LJiQdlXnXf60ii8b7uVYetHYtzqnq-rLCuH0iSUglA&oe=62B8340A&_nc_sid=55e238', 'Haha': 'https://scontent.xx.fbcdn.net/m1/v/t6/An-THWPVXq6iGcl9m0xpRXz841UFwm90bi1X84tlxOb8AG7h_2L7pTpESZnYZ-V90dtWcspSSm2WT0yqmOIxbs7Ms6rYoZGGCYDIVXAaSAA9l2YWfA.png?ccb=10-5&oh=00_AT8ZfQNGNfTkBZg3SGIcsPO8xvoDPepekk9rOfzWpftcww&oe=62B94D69&_nc_sid=55e238',
-             'Wow': 'https://scontent.xx.fbcdn.net/m1/v/t6/An9wqz15qSJBbtkJMsumo0WeMIE_6_MbAVHA1LdiH0PgQ82pe50V_Ey2f1YPiEO4lxTLUrsjaXWUC1bTJ3NKmC9FEw2jDlT2KFDmX_N13xBOjzFU8ws.png?ccb=10-5&oh=00_AT-UxLXpV4c14yN3kvb5F9MEtHoDiJmDsEcr8jI7-dkq8w&oe=62B82BC2&_nc_sid=55e238', 'Sad': 'https://scontent.xx.fbcdn.net/m1/v/t6/An8Y5LK0k-qkMes9nYNV5vHn0mALQUIvZXTKK-xekAdyqSbtBsDEcK0-FCVj5Mb7Ycj3xrItHd6q8iTSOi1VEki42ICqEi72j_mjN03-qgfUiGvWFfy1.png?ccb=10-5&oh=00_AT9YA3lQghs4FHNI3CMjeY4MkB4yQI-gJR06bC6HYbIHXQ&oe=62B7A4E5&_nc_sid=55e238', 'Angry': 'https://scontent.xx.fbcdn.net/m1/v/t6/An8ph2gwH6WsvW6pxuYzGzrW8CdpQXACl5PKb5e3I8yS82dPyO-cHlpZDGDHuNFUBIPS8_rJmr6L5JKI6gpOd6GVgh3sLHS6qMD_fv-qg6FoJAzZC2k.png?ccb=10-5&oh=00_AT-rAe7ljYEk1AJ_q7mUqfuy7vXuH3b9Dn8rMmvsRCzNrA&oe=62B8408C&_nc_sid=55e238'}
 
+current_group_page = None
+past_data = []
 
-def configure_driver(chromedriver: str):
-    """Configure the chromedriver
+driver = None
 
-    Args:
-        chromedriver (str): File path of the chromedriver in string form
-
-    Returns:
-        Webdriver: The configured webdriver
-    """
+def configure_driver():
+    global driver
 
     # configure webdriver
-    options = Options()
-    options.add_argument('--disable-notifications')
-    options.page_load_strategy = 'normal'
-    options.add_argument('--disable-site-isolation-trials')
-
-    # return webdriver
-    return webdriver.Chrome(options=options, executable_path=chromedriver)
+    driver = webdriver.Safari()
 
 
 def create_output_file(output_file: str):
@@ -46,7 +37,7 @@ def create_output_file(output_file: str):
     """
 
     # create pandas dataframe as a tsv file and create the file in the specified location given
-    dataframe = pd.DataFrame(columns=['post_id', 'author', 'date', 'text', 'media', 'comment_ids',
+    dataframe = pd.DataFrame(columns=['group or page', 'author', 'date', 'text', 'media', 'comments',
                              '# comments', '# reactions', '# shares'])
     dataframe.to_csv(output_file, sep='\t')
 
@@ -77,7 +68,7 @@ def upload_data(data: list, output_file: str):
     """
 
     df = pd.DataFrame(data)
-    df.to_csv(output_file, mode='a', sep='\t', header=False)
+    df.to_csv(output_file, mode='a', sep='\t', header=False, index=True)
 
 
 def get_keyword_list(keywords_file: str) -> list:
@@ -180,7 +171,7 @@ def get_dates_list(start_year: str) -> list:
     # quit the program
     else:
 
-        print('The year provided does not have an equivalent filter. Please add the year and filter to the FACEBOOK_YEARS dictionary at line 13.')
+        print('\nThe year provided does not have an equivalent filter. Please add the year and filter to the FACEBOOK_YEARS dictionary at line 13.')
         driver.quit()
 
     # return the date filters gathered
@@ -355,240 +346,76 @@ def open_see_more_links():
     # while 'see more' link elements exist
     while True:
 
-        # initialize counter to keep track of 'see more' elements
-        # specifically because some other elements use the same class
-        see_more_counter = 0
+        try:
+            # initialize counter to keep track of 'see more' elements
+            # specifically because some other elements use the same class
+            see_more_counter = 0
 
-        # loop through eack link
-        for link in links:
+            # loop through eack link
+            for link in links:
 
-            # if the text of the link says see more
-            # increment the counter
-            # click on the link to open more text
-            if link.text == 'See more':
+                # if the text of the link says see more
+                # increment the counter
+                # click on the link to open more text
+                if link.text == 'See more':
 
-                see_more_counter += 1
-                driver.execute_script("arguments[0].click();", link)
-                time.sleep(random.randint(2, 5))
-
-        # if the see more counter is 0, break the loop since there are no more see more links
-        if see_more_counter == 0:
-            break
-
-        # if the see more counter is more than 0
-        # there is a possibility of more see more links popping up when opening previous ones
-        # look for more links and loop again
-        links = driver.find_elements(
-            By.CSS_SELECTOR, 'div.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.lzcic4wl.gpro0wi8.oo9gr5id.lrazzd5p')
-
-
-def get_reactions(post: object, post_type: str) -> dict:
-    """Retrieves a dictionary of possible reactions and names of users that reacted with the certain reactions,
-    ex: {'Like': ['Cindy'], 'Love': [], etc.}
-
-    Args:
-        post (object): The WebElement object that represents a post or comment
-        post_type (str): Either 'post' or 'comment', allows for correct element searching
-
-    Returns:
-        dict: The reactions and who made each reaction
-    """
-
-    # if the post type is a post
-    if post_type == 'post':
-
-        # find the reaction bar
-        reaction_bar = post.find_elements(
-            By.CSS_SELECTOR, 'div.bp9cbjyn.m9osqain.j83agx80.jq4qci2q.bkfpd7mw.a3bd9o3v.kvgmc6g5.wkznzc2l.oygrvhab.dhix69tm.jktsbyx5.rz4wbd8a.osnr6wyh.a8nywdso.s1tcr66n')
-
-        # if the reaction bar exists
-        # find the reactions button
-        if len(reaction_bar) > 0:
-
-            reaction_bar = reaction_bar[0]
-            reactions_button = reaction_bar.find_elements(
-                By.CSS_SELECTOR, 'div.oajrlxb2.gs1a9yip.g5ia77u1.mtkw9kbi.tlpljxtp.qensuy8j.ppp5ayq2.goun2846.ccm00jje.s44p3ltw.mk2mc5f4.rt8b4zig.n8ej3o3l.agehan2d.sk4xxmp2.rq0escxv.nhd2j8a9.mg4g778l.pfnyh3mw.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.tgvbjcpo.hpfvmrgz.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.l9j0dhe7.i1ao9s8h.esuyzwwr.f1sip0of.du4w35lb.n00je7tq.arfg74bv.qs9ysxi8.k77z8yql.pq6dq46d.btwxx1t3.abiwlrkh.p8dawk7l.lzcic4wl')
-
-            # if the reactions button exists
-            # click the reactions button
-            if len(reactions_button) > 0:
-
-                reactions_button = reactions_button[0]
-                driver.execute_script(
-                    "arguments[0].click();", reactions_button)
-                time.sleep(random.randint(2, 5))
-
-                scroll_bar = driver.find_element(
-                    By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
-
-                # get the height of the web page
-                last_height = driver.execute_script(
-                    'return arguments[0].scrollHeight', scroll_bar)
-
-                # scroll while the end of the page hasn't been reached
-                while True:
-                    driver.execute_script(
-                        "arguments[0].scrollTo(0, arguments[0].scrollHeight)", scroll_bar)
-                    time.sleep(5)
-                    new_height = driver.execute_script(
-                        'return arguments[0].scrollHeight', scroll_bar)
-                    if new_height == last_height:
-                        break
-                    last_height = new_height
-
-                reaction_dict = {'Like': [], 'Love': [],
-                                 'Haha': [], 'Wow': [], 'Sad': [], 'Angry': []}
-
-                # find the main reactions box
-                reactions_box = driver.find_element(
-                    By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
-
-                # find each reaction within the reactions box
-                reactions = reactions_box.find_elements(
-                    By.CSS_SELECTOR, 'div.ow4ym5g4.auili1gw.rq0escxv.j83agx80.buofh1pr.g5gj957u.i1fnvgqd.oygrvhab.cxmmr5t8.hcukyx3x.kvgmc6g5.hpfvmrgz.qt6c0cv9.jb3vyjys.l9j0dhe7.du4w35lb.bp9cbjyn.btwxx1t3.dflh9lhu.scb9dxdr.nnctdnn4')
-
-                # if reactions exist
-                # loop through each reaction
-                # find the emoji image of the reaction
-                # append the user's name that made the reaction to the correct reaction in the dictionary
-                # return the dictionary
-                if len(reactions) > 0:
-
-                    for reaction in reactions:
-
-                        emoji = reaction.find_element(
-                            By.CSS_SELECTOR, 'img.hu5pjgll.bixrwtb6')
-
-                        reaction_index = list(REACTIONS.values()).index(
-                            emoji.get_attribute('src'))
-
-                        reactor = reaction.find_element(
-                            By.CSS_SELECTOR, 'a.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.lzcic4wl.gpro0wi8.oo9gr5id.lrazzd5p').text
-
-                        reaction_name = list(REACTIONS.keys())[reaction_index]
-
-                        reaction_dict[reaction_name].append(reactor)
-
-                    exit_button = driver.find_element(
-                        By.CSS_SELECTOR, 'div.oajrlxb2.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.nhd2j8a9.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.i1ao9s8h.esuyzwwr.f1sip0of.abiwlrkh.p8dawk7l.lzcic4wl.bp9cbjyn.s45kfl79.emlxlaya.bkmhp75w.spb7xbtv.rt8b4zig.n8ej3o3l.agehan2d.sk4xxmp2.rq0escxv.j83agx80.taijpn5t.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.l9j0dhe7.tv7at329.thwo4zme.tdjehn4e')
-                    driver.execute_script("arguments[0].click();", exit_button)
+                    see_more_counter += 1
+                    driver.execute_script("arguments[0].click();", link)
                     time.sleep(random.randint(2, 5))
 
-                    return reaction_dict
+            # if the see more counter is 0, break the loop since there are no more see more links
+            if see_more_counter == 0:
+                break
 
-                # otherwise, return None...
-                else:
+            # if the see more counter is more than 0
+            # there is a possibility of more see more links popping up when opening previous ones
+            # look for more links and loop again
+            links = driver.find_elements(
+                By.CSS_SELECTOR, 'div.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.lzcic4wl.gpro0wi8.oo9gr5id.lrazzd5p')
 
-                    return None
+        except:
 
-            else:
+            # if the see more counter is more than 0
+            # there is a possibility of more see more links popping up when opening previous ones
+            # look for more links and loop again
+            links = driver.find_elements(
+                By.CSS_SELECTOR, 'div.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.lzcic4wl.gpro0wi8.oo9gr5id.lrazzd5p')
 
-                return None
+            continue
 
-        else:
 
-            return None
+def scroll_reaction_box():
 
-    # if the post type is a comment
-    # find the reactions button
-    elif post_type == 'comment':
+    scroll_bar = driver.find_elements(
+        By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
 
-        reactions_button = post.find_elements(
-            By.CSS_SELECTOR, 'div.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.n00je7tq.arfg74bv.qs9ysxi8.k77z8yql.l9j0dhe7.abiwlrkh.p8dawk7l.lzcic4wl')
+    if len(scroll_bar) > 0:
 
-        # if the reactions button exists
-        # click the button
-        # find the reactions box and each individual reaction
-        if len(reactions_button) > 0:
+        # get the height of the web page
+        last_height = driver.execute_script(
+            'return arguments[0].scrollHeight', scroll_bar)
 
-            reactions_button = reactions_button[0]
+        # scroll while the end of the page hasn't been reached
+        while True:
 
-            driver.execute_script("arguments[0].click();", reactions_button)
-            time.sleep(random.randint(2, 5))
+            try:
 
-            scroll_bar = driver.find_element(
-                By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
+                driver.execute_script(
+                    "arguments[0].scrollTo(0, arguments[0].scrollHeight)", scroll_bar)
+                time.sleep(5)
 
-            # get the height of the web page
-            last_height = driver.execute_script(
-                'return arguments[0].scrollHeight', scroll_bar)
+                new_height = driver.execute_script(
+                    'return arguments[0].scrollHeight', scroll_bar)
 
-            # scroll while the end of the page hasn't been reached
-            while True:
+                if new_height == last_height:
 
-                try:
+                    break
 
-                    driver.execute_script(
-                        "arguments[0].scrollTo(0, arguments[0].scrollHeight)", scroll_bar)
-                    time.sleep(5)
+                last_height = new_height
 
-                    new_height = driver.execute_script(
-                        'return arguments[0].scrollHeight', scroll_bar)
+            except:
 
-                    if new_height == last_height:
-
-                        break
-
-                    last_height = new_height
-
-                except:
-
-                    scroll_bar = driver.find_element(
-                        By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
-                    continue
-
-            reaction_dict = {'Like': [], 'Love': [],
-                             'Haha': [], 'Wow': [], 'Sad': [], 'Angry': []}
-
-            reactions_box = driver.find_element(
-                By.CSS_SELECTOR, 'div.rpm2j7zs.k7i0oixp.gvuykj2m.j83agx80.cbu4d94t.ni8dbmo4.du4w35lb.q5bimw55.ofs802cu.pohlnb88.dkue75c7.mb9wzai9.l56l04vs.r57mb794.l9j0dhe7.kh7kg01d.eg9m0zos.c3g1iek1.otl40fxz.cxgpxx05.rz4wbd8a.sj5x9vvc.a8nywdso')
-
-            reactions = reactions_box.find_elements(
-                By.CSS_SELECTOR, 'div.ow4ym5g4.auili1gw.rq0escxv.j83agx80.buofh1pr.g5gj957u.i1fnvgqd.oygrvhab.cxmmr5t8.hcukyx3x.kvgmc6g5.hpfvmrgz.qt6c0cv9.jb3vyjys.l9j0dhe7.du4w35lb.bp9cbjyn.btwxx1t3.dflh9lhu.scb9dxdr.nnctdnn4')
-
-            # if reactions exist
-            # loop through each reaction
-            # find the emoji image of the reaction
-            # add the user's name that made the reaction to the correct reaction section in the dictionary
-            # return the reactions dictionary
-            if len(reactions) > 0:
-
-                for reaction in reactions:
-
-                    emoji = reaction.find_element(
-                        By.CSS_SELECTOR, 'img.hu5pjgll.bixrwtb6')
-
-                    reaction_index = list(REACTIONS.values()).index(
-                        emoji.get_attribute('src'))
-
-                    reactor = reaction.find_element(
-                        By.CSS_SELECTOR, 'a.oajrlxb2.g5ia77u1.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.rq0escxv.nhd2j8a9.nc684nl6.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.i1ao9s8h.esuyzwwr.f1sip0of.lzcic4wl.gpro0wi8.oo9gr5id.lrazzd5p').text
-
-                    reaction_name = list(REACTIONS.keys())[reaction_index]
-
-                    reaction_dict[reaction_name].append(reactor)
-
-                exit_button = driver.find_element(
-                    By.CSS_SELECTOR, 'div.oajrlxb2.qu0x051f.esr5mh6w.e9989ue4.r7d6kgcz.nhd2j8a9.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.i1ao9s8h.esuyzwwr.f1sip0of.abiwlrkh.p8dawk7l.lzcic4wl.bp9cbjyn.s45kfl79.emlxlaya.bkmhp75w.spb7xbtv.rt8b4zig.n8ej3o3l.agehan2d.sk4xxmp2.rq0escxv.j83agx80.taijpn5t.jb3vyjys.rz4wbd8a.qt6c0cv9.a8nywdso.l9j0dhe7.tv7at329.thwo4zme.tdjehn4e')
-
-                driver.execute_script("arguments[0].click();", exit_button)
-
-                time.sleep(random.randint(2, 5))
-
-                return reaction_dict
-
-            # otherwise, return None
-            else:
-
-                return None
-
-        else:
-
-            return None
-
-    else:
-
-        return None
+                break
 
 
 def get_media(post: object, post_type: str) -> list:
@@ -768,32 +595,6 @@ def get_num_reactions(post: object, post_type: str) -> str:
 
             return None
 
-    # if the post type is a comment
-    # get the reactions of the comment
-    elif post_type == 'comment':
-
-        reactions = get_reactions(post, 'comment')
-
-        # if reactions exist
-        # count the reactions
-        # return the count in string form
-        if reactions != None:
-
-            count = 0
-
-            for reaction in reactions:
-
-                results = reactions[reaction]
-
-                count += len(results)
-
-            return str(count)
-
-        # otherwise, return None
-        else:
-
-            return None
-
 
 def get_num_shares(post: object) -> str:
     """Retrieve the number of shares of a post
@@ -828,42 +629,6 @@ def get_num_shares(post: object) -> str:
 
     # otherwise, return None
     return num_shares
-
-
-def get_comment_ids(post_id: int, post: object) -> list:
-    """Retrieves the list of comment ids for the ability to find the post comments
-
-    Args:
-        post (object): The WebElement object that represents a post or comment
-        post_type (str): Either 'post' or 'comment', allows for correct element searching
-
-    Returns:
-        list: The provided post's comment ids
-    """
-
-    # get the number of comments of the post
-    num_comments = get_num_comments(post)
-
-    # if the number of comments does not equal None
-    # turn the number into an integer
-    if num_comments != None:
-
-        num_comments = int(num_comments)
-
-        # if the number of comments is bigger than 0
-        # create and return the list of comment ids
-        if num_comments > 0:
-
-            return [str(post_id) + '_' + str(num) for num in range(1, num_comments + 1)]
-
-        # otherwise, return None...
-        else:
-
-            return None
-
-    else:
-
-        return None
 
 
 def open_comments(post: object):
@@ -973,7 +738,7 @@ def open_all_comments_replies(post: object):
         view_elements = post.find_elements(By.CSS_SELECTOR, 'div.oajrlxb2.g5ia77u1.mtkw9kbi.tlpljxtp.qensuy8j.ppp5ayq2.goun2846.ccm00jje.s44p3ltw.mk2mc5f4.rt8b4zig.n8ej3o3l.agehan2d.sk4xxmp2.rq0escxv.nhd2j8a9.mg4g778l.p7hjln8o.kvgmc6g5.cxmmr5t8.oygrvhab.hcukyx3x.tgvbjcpo.hpfvmrgz.jb3vyjys.qt6c0cv9.a8nywdso.l9j0dhe7.i1ao9s8h.esuyzwwr.f1sip0of.du4w35lb.n00je7tq.arfg74bv.qs9ysxi8.k77z8yql.pq6dq46d.btwxx1t3.abiwlrkh.lzcic4wl.bp9cbjyn.m9osqain.buofh1pr.g5gj957u.p8fzw8mz.gpro0wi8')
 
 
-def get_comment_data(post: object, post_id: int, output_file: str):
+def get_comment_data(post: object):
     """Retrieves all of the data for each comment within the post provided
 
     Args:
@@ -991,6 +756,8 @@ def get_comment_data(post: object, post_id: int, output_file: str):
     # open all view more comments/replies
     open_all_comments_replies(post)
 
+    return_comments = []
+
     # get comments element of the post
     comments = post.find_elements(
         By.CSS_SELECTOR, 'div.rj1gh0hx.buofh1pr.ni8dbmo4.stjgntxs.hv4rvrfc')
@@ -1003,29 +770,26 @@ def get_comment_data(post: object, post_id: int, output_file: str):
     # increment the comment id
     if len(comments) > 0:
 
-        comment_id = 1
-
         for comment in comments:
 
-            data = [{
-                'post_id': str(post_id) + '_' + str(comment_id),
+            data = {
+                'group or page': current_group_page,
                 'author': get_author(comment, 'comment'),
                 'date': get_date(comment, 'comment'),
                 'text': get_text(comment, 'comment'),
                 'media': get_media(comment, 'comment'),
-                'comment ids': None,
-                'reactions': get_reactions(comment, 'comment'),
+                'comments': None,
                 '# comments': None,
-                '# reactions': get_num_reactions(comment, 'comment'),
+                '# reactions': None,
                 '# shares': None
-            }]
+            }
 
-            upload_data(data, output_file)
+            return_comments.append(data)
 
-            comment_id += 1
+    return return_comments
 
 
-def get_page_data(page_ids: list, dates: list, limit: int, keywords: list, output_file: str):
+def get_page_data(links: list, limit: int, output_file: str):
     """Retrieves the data from the page (posts, comments, etc)
 
     Args:
@@ -1039,74 +803,102 @@ def get_page_data(page_ids: list, dates: list, limit: int, keywords: list, outpu
     # get the global variables for counting purposes
     global post_id
     global limit_count
+    global past_data
 
-    # loop through each page
-    for page_id in page_ids:
+    for link in list(links):
 
-        # loop through each keyword within each page
-        for keyword in keywords:
+        # go to the website with the correct page id, keyword, and date
+        driver.get(link)
+        time.sleep(25)
 
-            # loop through each date per keyword per page
-            for date in dates:
+        get_group_or_page()
 
-                # go to the website with the correct page id, keyword, and date
-                driver.get('https://www.facebook.com/page/' +
-                           page_id + '/search?q=' + keyword + date)
-                time.sleep(25)
+        # scroll through the whole page and open all see more links
+        scroll_page()
+        open_see_more_links()
 
-                # scroll through the whole page and open all see more links
-                scroll_page()
-                open_see_more_links()
+        # get every facebook post and loop through them
+        posts = driver.find_elements(
+            By.CSS_SELECTOR, 'div.rq0escxv.l9j0dhe7.du4w35lb.hybvsw6c.io0zqebd.m5lcvass.fbipl8qg.nwvqtn77.k4urcfbm.ni8dbmo4.stjgntxs.sbcfpzgs')
 
-                # get every facebook post and loop through them
-                posts = driver.find_elements(
-                    By.CSS_SELECTOR, 'div.rq0escxv.l9j0dhe7.du4w35lb.hybvsw6c.io0zqebd.m5lcvass.fbipl8qg.nwvqtn77.k4urcfbm.ni8dbmo4.stjgntxs.sbcfpzgs')
+        for post in posts:
 
-                for post in posts:
+            text = get_text(post, 'post')
 
-                    # if the keyword is not in the post, skip it!
-                    if keyword not in post.text.lower():
+            if text != None:
+            
+                if not any(word.lower() in text.lower().split(' ') for word in keywords):
+                    continue
 
-                        continue
+                if text in past_data:
+                    continue
 
-                    # collect the data
-                    data = [{
-                        'post_id': post_id,
-                        'author': get_author(post, 'post'),
-                        'date': get_date(post, 'post'),
-                        'text': get_text(post, 'post'),
-                        'media': get_media(post, 'post'),
-                        'comment ids': get_comment_ids(post_id, post),
-                        'reactions': get_reactions(post, 'post'),
-                        '# comments': get_num_comments(post),
-                        '# reactions': get_num_reactions(post, 'post'),
-                        '# shares': get_num_shares(post)
-                    }]
+                else:
+                    past_data.append(text)
+                    pickle.dump(past_data, open('pastdata.dat', 'wb'))
 
-                    # upload the data
-                    upload_data(data, output_file)
+            # collect the data
+            data = [{
+                'group or page': current_group_page,
+                'author': get_author(post, 'post'),
+                'date': get_date(post, 'post'),
+                'text': text,
+                'media': get_media(post, 'post'),
+                'comments': get_comment_data(post) if get_num_comments(post) != None else None,
+                '# comments': get_num_comments(post),
+                '# reactions': get_num_reactions(post, 'post'),
+                '# shares': get_num_shares(post)
+            }]
 
-                    # if there are comments
-                    # get the comment data
-                    if get_num_comments(post) != None:
-                        get_comment_data(post, post_id, output_file)
+            # upload the data
+            upload_data(data, output_file)
 
-                    # if there is a limit
-                    # increment the limit since a new post was added
-                    if limit != None:
-                        limit_count += 1
+            # if there are comments
+            # get the comment data
+            if get_num_comments(post) != None:
+                get_comment_data(post)
 
-                        # if the limit was hit
-                        # let the user know and quit the program
-                        if limit_count == limit:
-                            print('Limit has been hit, all done!')
-                            driver.quit()
+            # if there is a limit
+            # increment the limit since a new post was added
+            if limit != None:
+                limit_count += 1
 
-                    # increment post id
-                    post_id += 1
+                # if the limit was hit
+                # let the user know and quit the program
+                if limit_count == limit:
+                    print('\nLimit has been hit, all done!')
+                    driver.quit()
+
+            # increment post id
+            post_id += 1
+
+        links.remove(link)
+        pickle.dump(links, open('oldpagesources.dat', 'wb'))
 
 
-def get_group_data(group_ids: list, dates: list, limit: int, keywords: list, output_file: str):
+def get_group_or_page() -> str | None:
+    """Retrieves the group name that the post resides in
+    """
+    global current_group_page, saved_post_data
+
+    group_page_elements = driver.find_elements(
+        By.CSS_SELECTOR, 'span.d2edcug0.hpfvmrgz.qv66sw1b.c1et5uql.lr9zc1uh.a8c37x1j.fe6kdd0r.mau55g9w.c8b282yb.keod5gw0.nxhoafnm.aigsh9s9.d9wwppkn.mdeji52x.e9vueds3.j5wam9gi.lrazzd5p.m9osqain.hzawbc8m')
+
+    if len(group_page_elements) > 0:
+
+        group_page_element = group_page_elements[0]
+        group_page = group_page_element.text.replace('in ', '')
+
+        if group_page != current_group_page and group_page != '':
+
+            current_group_page = group_page
+
+    else:
+
+        current_group_page = None
+
+
+def get_group_data(links: list, limit: int, output_file: str):
     """_summary_
 
     Args:
@@ -1120,78 +912,186 @@ def get_group_data(group_ids: list, dates: list, limit: int, keywords: list, out
     # get the global variables for counting purposes
     global limit_count
     global post_id
+    global past_data
 
     # initialize limit count and post id
     limit_count = 0
     post_id = 1
 
-    # loop through every group
-    for group_id in group_ids:
+    for link in list(links):
 
-        # loop through every keyword within each group
-        for keyword in keywords:
+        # go to the correct website of the correct group id, keyword, and date
+        driver.get(link)
+        time.sleep(25)
 
-            # loop through every date per keyword per group
-            for date in dates:
+        get_group_or_page()
 
-                # go to the correct website of the correct group id, keyword, and date
-                driver.get('https://www.facebook.com/groups/' +
-                           group_id + '/search?q=' + keyword + date)
-                time.sleep(25)
+        # scroll through the whole page and open all see more links
+        scroll_page()
+        open_see_more_links()
 
-                # scroll through the whole page and open all see more links
-                scroll_page()
-                open_see_more_links()
+        # get every facebook post and loop through them
+        posts = driver.find_elements(
+            By.CSS_SELECTOR, 'div.rq0escxv.l9j0dhe7.du4w35lb.hybvsw6c.io0zqebd.m5lcvass.fbipl8qg.nwvqtn77.k4urcfbm.ni8dbmo4.stjgntxs.sbcfpzgs')
 
-                # get every facebook post and loop through them
-                posts = driver.find_elements(
-                    By.CSS_SELECTOR, 'div.rq0escxv.l9j0dhe7.du4w35lb.hybvsw6c.io0zqebd.m5lcvass.fbipl8qg.nwvqtn77.k4urcfbm.ni8dbmo4.stjgntxs.sbcfpzgs')
+        for post in posts:
 
-                for post in posts:
+            text = get_text(post, 'post')
 
-                    # if the keyword is not in the post, skip the post
-                    if keyword not in post.text.lower():
+            if text:
+            
+                if not any(word.lower() in text.lower().split(' ') for word in keywords):
+                    continue
 
-                        continue
+                if text in past_data:
+                    time.sleep(5)
+                    continue
 
-                    # colelct the data
-                    data = [{
-                        'post_id': post_id,
-                        'author': get_author(post, 'post'),
-                        'date': get_date(post, 'post'),
-                        'text': get_text(post, 'post'),
-                        'media': get_media(post, 'post'),
-                        'comment ids': get_comment_ids(post_id, post),
-                        'reactions': get_reactions(post, 'post'),
-                        '# comments': get_num_comments(post),
-                        '# reactions': get_num_reactions(post, 'post'),
-                        '# shares': get_num_shares(post)
-                    }]
+                else:
+                    past_data.append(text)
+                    pickle.dump(past_data, open('pastdata.dat', 'wb'))
+            
+            else:
+                time.sleep(5)
+                continue
 
-                    # upload the data
-                    upload_data(data, output_file)
+            # collect the data
+            data = [{
+                'group or page': current_group_page,
+                'author': get_author(post, 'post'),
+                'date': get_date(post, 'post'),
+                'text': text,
+                'media': get_media(post, 'post'),
+                'comments': get_comment_data(post) if get_num_comments(post) != None else None,
+                '# comments': get_num_comments(post),
+                '# reactions': get_num_reactions(post, 'post'),
+                '# shares': get_num_shares(post)
+            }]
 
-                    # if there are comments
-                    # collect the comment data
-                    if get_num_comments(post) != None:
-                        get_comment_data(post, post_id, output_file)
+            # upload the data
+            upload_data(data, output_file)
 
-                    # if there is a limit
-                    # increment the limit count
-                    if limit != None:
-                        limit_count += 1
+            # if there is a limit
+            # increment the limit count
+            if limit != None:
+                limit_count += 1
 
-                        # if the limit count is hit
-                        # let the user know and quit the program
-                        if limit_count == limit:
-                            print('Limit has been hit, all done!')
-                            driver.quit()
+                # if the limit count is hit
+                # let the user know and quit the program
+                if limit_count == limit:
+                    print('\nLimit has been hit, all done!')
+                    driver.quit()
 
-                    # increment the post id
-                    post_id += 1
+            # increment the post id
+            post_id += 1
+
+        links.remove(link)
+        pickle.dump(links, open('oldgroupsources.dat', 'wb'))
 
 
-def FacebookScraper(limit: int, start_year: str, username: str, password: str, group_ids: str, page_ids: str, keywords_file: str, output_file: str, chromedriver: str):
+def get_links(ids: list, keywords: str, dates: list, type: str) -> list:
+    """Retrieves a list of links to keep track of what link was last left on if the program breaks or closes by accident.
+
+    Args:
+        group_ids (list): The groups to collect data from
+        keywords (str): The keywords to find within each group
+        dates (list): The dates to find each keyword in the groups
+
+    Returns:
+        list: The finalized links to go to for data collecting
+    """
+
+    links = []
+
+    for id in ids:
+
+        for date in dates:
+
+            for keyword in keywords:
+
+                if type == 'group':
+
+                    links.append('https://www.facebook.com/groups/' +
+                                 id + '/search?q=' + keyword + date)
+
+                elif type == 'page':
+
+                    links.append('https://www.facebook.com/page/' +
+                                 id + '/search?q=' + keyword + date)
+
+    return links
+
+
+def check_for_old_sources():
+
+    if os.path.exists('oldgroupsources.dat'):
+
+        while True:
+
+            print(
+                '\nOld group sources have been found from your last run that have not been searched through.')
+            print('\nWould you like to continue searching through these group sources?')
+
+            response = input('\nY (yes) or N (no): ')
+
+            if response.lower() == 'y':
+
+                print(
+                    '\nThe old group sources has been gathered and will be searched through.')
+                print('\nContinuing program.')
+                break
+
+            if response.lower() == 'n':
+
+                os.remove('oldgroupsources.dat')
+                if os.path.exists('pastdata.dat'):
+                    os.remove('pastdata.dat')
+                print('\nThe old group sources has been removed.')
+                print('\nContinuing program.')
+                break
+
+            else:
+
+                print('\nYour response does not match our instructions.')
+                print('\nPlease try again.')
+                continue
+
+    if os.path.exists('oldpagesources.dat'):
+
+        while True:
+
+            print(
+                '\nOld page sources have been found from your last run that have not been searched through.')
+            print('\nWould you like to continue searching through these page sources?')
+
+            response = input('\nY (yes) or N (no): ')
+
+            if response.lower() == 'y':
+
+                print(
+                    '\nThe old page sources has been gathered and will be searched through.')
+                print('\nContinuing program.')
+                break
+
+            if response.lower() == 'n':
+
+                os.remove('oldpagesources.dat')
+
+                if os.path.exists('pastdata.dat'):
+                    os.remove('pastdata.dat')
+
+                print('\nThe old page sources has been removed.')
+                print('\nContinuing program.')
+                break
+
+            else:
+
+                print('\nYour response does not match our instructions.')
+                print('\nPlease try again.')
+                continue
+
+
+def FacebookScraper(limit: int, start_year: str, username: str, password: str, group_ids: str, page_ids: str, keywords_file: str, output_file: str):
     """A Facebook scraper that collects post and comment data from Facebook groups and pages
 
     Args:
@@ -1206,17 +1106,14 @@ def FacebookScraper(limit: int, start_year: str, username: str, password: str, g
         chromedriver (str): The path and name of the chromedriver that will be used to scrape Facebook with
     """
 
-    # declare global variables
-    global driver
+    global keywords, past_data
 
-    # configure the driver
-    driver = configure_driver(chromedriver)
-
-    # create the output file
-    create_output_file(output_file)
+    check_for_old_sources()
 
     # create list of keywords
     keywords = get_keyword_list(keywords_file)
+
+    create_output_file(output_file)
 
     # if a start year exists
     # create a list of date filters to run through
@@ -1230,32 +1127,51 @@ def FacebookScraper(limit: int, start_year: str, username: str, password: str, g
         dates = [
             '&filters=eyJycF9jaHJvbm9fc29ydDowIjoie1wibmFtZVwiOlwiY2hyb25vc29ydFwiLFwiYXJnc1wiOlwiXCJ9In0%3D']
 
+    configure_driver()
+
     # login to Facebook
     login(username, password)
 
-    # if group ids exist
-    # create a list
-    # get the group data (posts and comments)
-    if group_ids != None:
+    if os.path.exists('oldgroupsources.dat'):
 
-        group_ids = get_id_list(group_ids)
-        get_group_data(group_ids, dates, limit, keywords, output_file)
+        links = pickle.load(open('oldgroupsources.dat', 'rb'))
+        past_data = pickle.load(open('pastdata.dat', 'rb'))
+        get_group_data(links, limit, output_file)
 
-    # if page ids exist
-    # create a list
-    # get the page data (posts and comments)
-    if page_ids != None:
+    else:
 
-        page_ids = get_id_list(page_ids)
-        get_page_data(page_ids, dates, limit, keywords, output_file)
+        # if group ids exist
+        # create a list
+        # get the group data (posts and comments)
+        if group_ids != None:
+
+            group_ids = get_id_list(group_ids)
+            links = get_links(group_ids, keywords, dates, 'group')
+            get_group_data(links, limit, output_file)
+
+    if os.path.exists('oldpagesources.dat'):
+
+        links = pickle.load(open('oldpagesources.dat', 'rb'))
+        past_data = pickle.load(open('pastdata.dat'))
+        get_page_data(links, limit, output_file)
+
+    else:
+
+        if page_ids != None:
+
+            page_ids = get_id_list(page_ids)
+            links = get_links(page_ids, keywords, dates, 'page')
+            get_page_data(links, limit, output_file)
 
     # let the user know the program is finished
     # quit the program
-    print('All done!')
+    print('\nAll done!')
     driver.quit()
 
 
 def main():
+
+    global output_file
 
     import argparse
 
@@ -1299,7 +1215,7 @@ def main():
     parser.add_argument(
         '-gi',
         '--group_ids',
-        help='List of Facebook Group IDS, ex: 12345678, 91011121314',
+        help='List of Facebook Group IDS, ex: "12345678, 91011121314"',
         type=str,
         default=None
     )
@@ -1307,7 +1223,7 @@ def main():
     parser.add_argument(
         '-pi',
         '--page_ids',
-        help='List of Facebook Page IDS, ex: 12345678, 91011121314',
+        help='List of Facebook Page IDS, ex: "12345678, 91011121314"',
         type=str,
         default=None
     )
@@ -1323,20 +1239,14 @@ def main():
     parser.add_argument(
         '-o',
         '--output_file',
-        help='File path where output file will be stored in .tsv form',
-        type=str,
-        required=True
-    )
-
-    parser.add_argument(
-        '-d',
-        '--chromedriver',
-        help='File path where chromedriver is stored',
+        help='File path where output files will be stored in .tsv form',
         type=str,
         required=True
     )
 
     args = parser.parse_args()
+
+    output_file = args.output_file
 
     FacebookScraper(
         args.limit,
@@ -1346,8 +1256,7 @@ def main():
         args.group_ids,
         args.page_ids,
         args.keywords_file,
-        args.output_file,
-        args.chromedriver
+        args.output_file
     )
 
 
