@@ -3,11 +3,9 @@
 import pandas as pd
 import argparse
 import sys
-from pprint import pprint
 
-# this is here just in case we need it
+# this list is here just in case we need it
 df_indices = [
-    "id",
     "Advice",
     "Call to measure",
     "Community Engagement",
@@ -40,15 +38,19 @@ df_indices = [
     "Troubleshooting",
 ]
 
+df_indices = [x.lower() for x in df_indices]
+
 ######## Supporting functions will be placed here ########
 def reformat(data: pd.DataFrame):
-    # Structure for new dataframe
     new_data = []
-    # for each post
-    for _ , row in data.iterrows():
-        new_data.append(row[-5:].value_counts().rename(row['id']))
 
-    new_data = pd.DataFrame(new_data).fillna(0).astype(int).sort_index(axis=1)
+    for _ , row in data.iterrows():
+        val_counts = row[-5:].value_counts()
+        text = pd.Series([row["text"]], index=['text'])
+        new_data.append(pd.concat([text, val_counts]))
+
+    new_data = pd.DataFrame(new_data, index=data['id']).fillna(0)
+    new_data.loc[:, 'not related':] = new_data.loc[:, 'not related':].astype(int)
     return new_data
 
 ######## End of supporting functions ########
