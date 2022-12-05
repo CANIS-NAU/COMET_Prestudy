@@ -1,0 +1,14 @@
+name: comet
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - nltk
+  - python=3.10
+  - wordcloud
+  - seaborn
+  - jupyter
+  - notebook
+  - pandas
+  - numpy
+  - vadersentiment
